@@ -1,5 +1,5 @@
-from image_handler import APIShifterImageHandler
-from validate import SSHValidator
+from custom.image_handler import APIShifterImageHandler
+from custom.validate import SSHValidator
 
 
 c.EntrypointService.systems = [
