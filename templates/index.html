@@ -1,0 +1,408 @@
+{% extends "page.html" %}
+{% block main %}
+
+<!-- if there are no systems set, show an error screen -->
+{% if systems|length == 0 %}
+<div class="container">
+    <h4>Sorry, nothing to see here...</h4>
+    <h4>If you believe this is a mistake, please contact the system administrator.</h4>
+    <br />
+    <h6>Error: The systems list has not been set in entrypoint_config.py.</h6>
+</div>
+
+<!-- otherwise here is the main screen -->
+{% else %}
+<div class="container">
+
+    <!-- button to clear the current entrypoint, hook set in script block -->
+    <div class="row">
+        <form id="clear-selection" class="col-md-offset-3 col-md-6">
+            <div class="form-group">
+                <div class="text-center">
+                    <button type="submit" class="btn btn-lg btn-jupyter">
+                        Clear current custom entrypoint
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- row of buttons to change selected system -->
+    {% if systems|length > 1 %}
+    <div class="row">
+        <div class="col-md-offset-3 col-md-6">
+            <div class="text-center">
+                {% for sys in systems %}
+                <button id="select-{{sys}}" class="btn btn-sm btn-primary selection-buttons">
+                    {{sys['displayname']}}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- displays current entrypoint, modified by script block -->
+    <div class="row">
+        <div class="col-md-offset-2 col-md-7">
+            <dl>
+                {% if system['hostname'] != '' %}
+                <dt>Your current custom entrypoint for {{system['displayname']}}
+                    ({{user['name']}}@{{system['hostname']}}):</dt>
+                {% else %}
+                <dt>Your current custom entrypoint for {{system['displayname']}}:</dt>
+                {% endif %}
+                <dd id="current-entrypoint">None</dd>
+            </dl>
+        </div>
+    </div>
+
+    {% for entrypoint_type in entrypoint_types %}
+    {% set show_add_box = entrypoint_type['mutable'] %}
+    {% set entrypoint = entrypoint_type['displayname'] %}
+    {% set entrypoint_type = entrypoint_type['name'] %}
+    <!-- create a row to manage each entrypoint type -->
+    <div class="row">
+        <div class="update-entrypoint col-md-offset-2 col-md-8">
+            <h4>Manage {{entrypoint}} Entrypoints</h4>
+            <div class="form-group">
+                <span class="input-group">
+                    <!-- create text input to select environments -->
+                    <input type="search" id="{{entrypoint_type}}" name="{{entrypoint_type}}" class="form-control"
+                        list="list_{{entrypoint_type}}" autocomplete="off"
+                        placeholder="Select a {{entrypoint_type}} environment as entrypoint">
+
+                    <!-- create delete, select, and add buttons -->
+                    <span class="input-group-btn">
+                        {% if show_add_box %}
+                        <button type="button" onclick="deleteHandler('{{entrypoint_type}}')"
+                            class="btn btn-jupyter">delete</button>
+                        {% endif %}
+                        <button type="button" onclick="selectHandler('{{entrypoint_type}}')"
+                            class="btn btn-jupyter">select</button>
+                        {% if show_add_box %}
+                        <button type="button" class="btn btn-jupyter" data-toggle="modal"
+                            data-target="#add-{{entrypoint_type}}-modal">add</button>
+                        {% endif %}
+                    </span>
+                </span>
+
+                <!-- create the list of options for the input box above -->
+                <datalist id="list_{{entrypoint_type}}">
+                    {% set vars = "list_{{entrypoint_type}}"%}
+                    {% for elem in vars %}
+                    <option value="{{ elem }}">
+                    </option>
+                    {% endfor %}
+                </datalist>
+            </div>
+            <small id="{{entrypoint_type}}-path-note" class="form-text text-muted note">
+                Click <a href="">here</a> for instructions on adding a new {{entrypoint}} environment.
+            </small>
+        </div>
+
+        <!-- create a modal for adding new entrypoints -->
+        <div class="modal fade" id="add-{{entrypoint_type}}-modal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title" id="add-{{entrypoint_type}}-modal-title">
+                            Add a New {{entrypoint}} Entrypoint
+                        </h4>
+                    </div>
+                    <div class="modal-body">
+                        <div id="add-{{entrypoint_type}}" class="add-entrypoint col-md-offset-2 col-md-8">
+                            <div class="form-group">
+                                <div class="input-group">
+                                    <!-- input field to add new path -->
+                                    <input id="add-{{entrypoint_type}}-path" name="add-{{entrypoint_type}}-path"
+                                        class="small-form form-control" autocomplete="off"
+                                        placeholder="New {{entrypoint_type}} environment path">
+
+                                    <!-- input field to add new name -->
+                                    <input id="add-{{entrypoint_type}}-name" name="add-{{entrypoint_type}}-name"
+                                        class="form-control small-form" autocomplete="off"
+                                        placeholder="New {{entrypoint_type}} environment name">
+
+                                    <!-- create a checkbox for each system for tagging -->
+                                    <p class="no-margin form-text"><b>Make entrypoint available for:</b></p>
+                                    {% for sys in systems %}
+                                    {% if system == sys %}
+                                    <input type="checkbox" id="{{entrypoint_type}}-{{sys['name']}}-tag"
+                                        name="tag-{{entrypoint_type}}-for-{{system['name']}}" value="{{sys['name']}}"
+                                        checked>
+                                    <label class="checkbox-label" for="{{sys['name']}}">{{sys['displayname']}}</label>
+                                    {% else %}
+                                    <input type="checkbox" id="{{entrypoint_type}}-{{sys['name']}}-tag"
+                                        name="tag-{{entrypoint_type}}-for-{{system['name']}}" value="{{sys['name']}}">
+                                    <label class="checkbox-label" for="{{sys['name']}}">{{sys['displayname']}}</label>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <!-- where to show messages if necessary -->
+                            <div>
+                                <small id="{{entrypoint_type}}-error-msg"
+                                    class="form-text text-muted error note"></small>
+                                <small id="{{entrypoint_type}}-msg" class="form-text text-muted note"></small>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- create cancel and add buttons for foot of the modal -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="addHandler('{{entrypoint_type}}')">Add
+                            entrypoint</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style scoped>
+    .modal-body {
+        min-height: 190px;
+    }
+
+    .checkbox-label {
+        margin: 0px 30px 0px 5px;
+    }
+
+    .no-margin {
+        margin: 0px;
+    }
+
+    .error {
+        color: rgba(255, 0, 0, 0.788);
+    }
+
+    .selection-buttons {
+        margin: 0px 10px 30px 10px;
+    }
+
+    .row {
+        max-width: 900px;
+        margin: auto;
+    }
+
+    h4 {
+        margin-top: 40px;
+    }
+
+    .btn {
+        min-width: 72px;
+    }
+
+    .input-group .small-form {
+        position: relative;
+        z-index: 2;
+        float: left;
+        margin-bottom: 10px;
+    }
+
+    .input-group {
+        margin-bottom: 0px;
+    }
+
+    .note {
+        padding-left: 3px;
+    }
+</style>
+{% endif %}
+{% endblock %}
+
+<!-- js code that handles API requests & updates DOM elements -->
+{% block script %}
+{% if systems|length > 1 %}
+{{ super() }}
+
+{% set hostname = system['hostname'] %}
+{% set system=system['name'] %}
+
+<!-- Fetch available entrypoints from API endpoints -->
+{% for entrypoint_type in entrypoint_types %}
+{% set entrypoint_type = entrypoint_type['name'] %}
+<script type="text/javascript">
+    $.get("/services/entrypoint/entrypoints/users/{{user.name}}/type/{{entrypoint_type}}?system={{system}}", function (data) {
+        const list = data[Object.keys(data)[0]];
+        let content = "";
+        $.each(list, function (index, value) {
+            content += `<option value="${value["name"]}" name="${value["name"]}" id="${value["id"]}" data-path="${value["entrypoint"]}">\n`;
+        });
+        $("#list_{{entrypoint_type}}").html(content);
+        $("#{{entrypoint_type}}").prop("disabled", false);
+    });
+</script>
+{% endfor %}
+
+<!-- Create click handlers to swap selected system -->
+{% for system in systems %}
+<script type="text/javascript">
+    document.getElementById("select-{{system}}").addEventListener("click", function () {
+        const url = new URL(window.location);
+        url.searchParams.set("system", "{{system['name']}}");
+        window.location.replace(url);
+    });
+</script>
+{% endfor %}
+
+<script type="text/javascript">
+    String.prototype.capitalize = function () {
+        return this.charAt(0).toUpperCase() + this.slice(1);
+    }
+
+    // format message that shows the current selected entrypoint
+    formatCurrentSelection("{{system}}");
+    async function formatCurrentSelection(system) {
+        let content = 'None';
+        try {
+            await $.get(`/services/entrypoint/users/{{user.name}}/systems/${system.toLowerCase()}`, function (data) {
+                if (Object.keys(data).length !== 0) {
+                    const type = data["{{user.name}}"][0]["type"];
+                    let prefix = (type === "") ? "None" : type.capitalize() + ": ";
+                    const env = data["{{user.name}}"][0]["name"];
+                    const path = data["{{user.name}}"][0]["entrypoint"]
+                    if (path !== env) {
+                        content = `${prefix + env} (${path})`;
+                    } else {
+                        content = `${prefix + env}`;
+                    }
+                }
+            });
+        } catch { }
+        $("#current-entrypoint").html(content);
+    }
+
+    // clear the current selected entrypoint
+    $("#clear-selection").submit(function (event) {
+        event.preventDefault();
+        $.ajax({
+            method: "DELETE",
+            url: "/services/entrypoint/users/{{user.name}}/systems/{{system}}",
+            data: JSON.stringify({ "type": "{{system}}", "id": "current" })
+        }).always(function () {
+            location.reload(true);
+        });
+    });
+
+    // collects on screen variables & calls addEntrypoint()
+    async function addHandler(entrypoint_type) {
+        const path = $(`#add-${entrypoint_type}-path`).val();
+        const name = $(`#add-${entrypoint_type}-name`).val();
+
+        const elems = document.getElementsByName(`tag-${entrypoint_type}-for-{{system}}`);
+
+        let systems = [];
+        elems.forEach((elem) => {
+            if ($(`#${elem.id}`).is(":checked")) {
+                systems.push(elem.value);
+            }
+        });
+
+        let result = {};
+
+        // Ensure user set variables are okay before calling addEntrypoint()
+        if (path.length == 0) {
+            result = { 'result': false, 'message': 'Error: Path cannot be empty' };
+        } else if (name.length == 0) {
+            result = { 'result': false, 'message': 'Error: Name cannot be empty' };
+        } else if (systems.length == 0) {
+            result = { 'result': false, 'message': 'Error: No system selected' };
+        } else {
+            result = await addEntrypoint(name, path, entrypoint_type, systems);
+        }
+
+        if (!result.result) {
+            $(`#${entrypoint_type}-error-msg`).html(result.message);
+        } else {
+            location.reload();
+        }
+    }
+
+    // POSTs a new entrypoint to the API endpoint
+    async function addEntrypoint(entrypoint_name, entrypoint_path, entrypoint_type, systems) {
+        const response = await $.ajax({
+            method: "POST",
+            url: "/services/entrypoint/users/{{user.name}}/systems/{{system}}",
+            data: JSON.stringify({
+                "name": entrypoint_name,
+                "entrypoint": entrypoint_path,
+                "type": entrypoint_type,
+                "systems": systems,
+                "host": '{{hostname}}',
+            }),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+        });
+
+        return response;
+    }
+
+    // collects the onscreen variables and calls updateEntrypoint()
+    async function selectHandler(entrypoint_type) {
+        let result;
+        try {
+            const name = $(`#${entrypoint_type}`).val();
+            const elem = document.getElementsByName(name)[0];
+            const id = elem.id;
+            const path = elem.dataset.path;
+            result = await updateEntrypoint(id, entrypoint_type, name, path);
+        } catch {
+            result = { 'result': false, 'message': 'Error: failed to fetch. Did you select from the drop down list?' };
+        }
+
+        if (!result.result) {
+            $(`#${entrypoint_type}-error-msg`).html(result.message);
+            document.getElementById(`${entrypoint_type}`).value = '';
+        } else {
+            location.reload();
+        }
+    }
+
+    // POSTs the selected environment to replace the current entrypoint
+    async function updateEntrypoint(id, entrypoint_type, name, path) {
+        const response = await $.ajax({
+            method: "PUT",
+            url: "/services/entrypoint/users/{{user.name}}/systems/{{system}}",
+            data: JSON.stringify({
+                "name": name,
+                "entrypoint": path,
+                "id": id,
+                "type": entrypoint_type,
+            }),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+        });
+
+        return response;
+    }
+
+    // collects onscreen variables and calls deleteEntrypoint()
+    async function deleteHandler(entrypoint_type) {
+        const name = $(`#${entrypoint_type}`).val();
+        const id = document.getElementsByName(name)[0].id;
+        const result = await deleteEntrypoint(id, entrypoint_type);
+
+        location.reload();
+    }
+
+    // sends DELETE to API endpoint
+    async function deleteEntrypoint(id, entrypoint_type) {
+        const response = await $.ajax({
+            method: "DELETE",
+            url: "/services/entrypoint/users/{{user.name}}/systems/{{system}}",
+            data: JSON.stringify({
+                "id": id,
+                "type": entrypoint_type
+            }),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+        });
+
+        return response.result;
+    }
+</script>
+{% endif %}
+{% endblock %}
