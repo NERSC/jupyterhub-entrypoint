@@ -21,7 +21,7 @@ Originally developed for use at NERSC.
 
 ## Installation
 
-    pip install git+https://github.com/Josh0823/entrypoint-service
+    pip install jupyterhub-entrypoint
 
 ## How to Configure It
 
@@ -54,7 +54,15 @@ You have to specify the API token for the hub and the entrypoint service to shar
 If you're running a hub with internal SSL turned on, you'll want to take advantage of the SSL option settings.
 
 ### Service Configuration
-The service also has its own configuration file, by default `entrypoint_config.py`. The configuration text can be generated with a --generate-config option.
+The service also has its own configuration file, by default `entrypoint_config.py`. The configuration text can be generated with:
+
+    python -m jupyterhub_entrypoint --generate-config
+
+The generated text can be placed in a file called `entrypoint_config.py` and placed in the directory where the `jupyterhub` command will be executed. The configuration file can also be specified by modifying the command in the c.JupyterHub.services configuration option to be:
+
+    'command': ["python", "-m", "jupyterhub_entrypoint", "--EntrypointService.config_file='path/to/entrypoint_config.py'"]
+
+If running the service as an external service, include the file in the same directory as the jupyterhub_entrypoint module.
 
 Most of the service configuration settings are optional, but in order for the service to usable there are some settings that must be configured.
 
@@ -111,7 +119,7 @@ Other important configuration settings include:
 - `c.EntrypointService.storage_path`
     - This is the path location of where user entrypoints will be stored. By default the files will be stored at './data', which is relative to where jupyterhub_entrypoint is installed.
 - `c.APIBaseHandler.validator`
-    - By default when users submit a new entrypoint there is no check to ensure the path is valid. This can be configured by writing a new Python class that extends the BaseValidator from `jupyterhub_entrypoint.api`. See `validate.py` for an example of a validator that uses asyncssh to ensure conda envs exist and that bash scripts are executable.
+    - By default when users submit a new entrypoint there is no check to ensure the path is valid. This can be configured by writing a new Python class that extends the BaseValidator from `jupyterhub_entrypoint.api`. See `custom/validate.py` for an example of a validator that uses asyncssh to ensure conda envs exist and that bash scripts are executable.
 
 ## How to Use It
 
