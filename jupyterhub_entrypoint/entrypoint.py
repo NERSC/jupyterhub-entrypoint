@@ -8,7 +8,7 @@
 import os
 import sys
 from tornado import ioloop, web
-from jinja2 import ChoiceLoader, FileSystemLoader, PrefixLoader
+from jinja2 import FileSystemLoader
 
 from traitlets import Bool, Dict, Integer, List, Unicode, default
 from traitlets.config import Application, Configurable
@@ -116,7 +116,8 @@ class EntrypointService(Application, Configurable):
     @default("template_paths")
     def _template_paths_default(self):
         return ["templates",
-                os.path.join(self.data_files_path, "templates")]
+                os.path.join(self.data_files_path, "templates"),
+                os.path.join(self.data_files_path, "entrypoint", "templates")]
 
     # initialize the web app by loading the config file, loading the template,
     # and setting the request handlers
