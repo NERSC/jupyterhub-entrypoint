@@ -135,18 +135,15 @@ class EntrypointService(Application, Configurable):
         self.init_ssl_context()
 
         # get the base data path to find the templates folder
-        base_path = self._template_paths_default()[0]
-        if base_path not in self.template_paths:
-            self.template_paths.append(base_path)
+        base_paths = self._template_paths_default()
+        for path in base_paths:
+            if path not in self.template_paths:
+                self.template_paths.append(path)
+
+        print(self.template_paths)
 
         # create a jinja loader to get the necessary html templates
-        loader = ChoiceLoader(
-            [
-                PrefixLoader(
-                    {"templates": FileSystemLoader([base_path])}, "/"),
-                FileSystemLoader(self.template_paths),
-            ]
-        )
+        loader = FileSystemLoader(self.template_paths)
 
         # create a dict of settings to pass on to the request handlers
         self.settings = {

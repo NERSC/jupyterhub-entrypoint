@@ -13,30 +13,31 @@
 <!-- otherwise here is the main screen -->
 {% else %}
 <div class="container">
-
-    <!-- button to clear the current entrypoint, hook set in script block -->
+    <!-- show title information -->
     <div class="row">
-        <form id="clear-selection" class="col-md-offset-3 col-md-6">
-            <div class="form-group">
-                <div class="text-center">
-                    <button type="submit" class="btn btn-lg btn-jupyter">
-                        Clear current custom entrypoint
-                    </button>
-                </div>
+        <div class="col-md-offset-2 col-md-8">
+            <div class="text-center title">
+                <h2>JupyterHub Entrypoint Service</h2>
+                <h5>Launch Jupyter notebooks in custom environments</h5>
             </div>
-        </form>
+        </div>
     </div>
 
     <!-- row of buttons to change selected system -->
     {% if systems|length > 1 %}
     <div class="row">
-        <div class="col-md-offset-3 col-md-6">
-            <div class="text-center">
+        <div class="col-md-offset-2 col-md-8">
+            <div class="text-center tab">
+                <p class="tablinks selection-buttons systems-tab-title" disabled>Systems: </p>
                 {% for sys in systems %}
-                <button id="select-{{sys}}" class="btn btn-sm btn-primary selection-buttons">
-                    {{sys['displayname']}}
-                </button>
-                {% endfor %}
+                {% if sys == system %}
+                <button id="select-{{sys['name']}}" class="tablinks active selection-buttons">
+                    {% else %}
+                    <button id="select-{{sys['name']}}" class="tablinks selection-buttons">
+                        {% endif %}
+                        {{sys['displayname']}}
+                    </button>
+                    {% endfor %}
             </div>
         </div>
     </div>
@@ -44,15 +45,22 @@
 
     <!-- displays current entrypoint, modified by script block -->
     <div class="row">
-        <div class="col-md-offset-2 col-md-7">
+        <div class="col-md-offset-2 col-md-8">
             <dl>
                 {% if system['hostname'] != '' %}
-                <dt>Your current custom entrypoint for {{system['displayname']}}
+                <dt>Selected custom entrypoint for {{system['displayname']}}
                     ({{user['name']}}@{{system['hostname']}}):</dt>
                 {% else %}
-                <dt>Your current custom entrypoint for {{system['displayname']}}:</dt>
+                <dt>Selected custom entrypoint for {{system['displayname']}}:</dt>
                 {% endif %}
-                <dd id="current-entrypoint">None</dd>
+                <div>
+                    <dd id="current-entrypoint">None</dd>
+                </div>
+                <form id="clear-selection">
+                    <button type="submit" class="btn btn-jupyter clear-button">
+                        Clear current custom entrypoint
+                    </button>
+                </form>
             </dl>
         </div>
     </div>
@@ -81,7 +89,7 @@
                         <button type="button" onclick="selectHandler('{{entrypoint_type}}')"
                             class="btn btn-jupyter">select</button>
                         {% if show_add_box %}
-                        <button type="button" class="btn btn-jupyter" data-toggle="modal"
+                        <button type="button" class="add-button btn btn-jupyter" data-toggle="modal"
                             data-target="#add-{{entrypoint_type}}-modal">add</button>
                         {% endif %}
                     </span>
@@ -97,7 +105,7 @@
                 </datalist>
             </div>
             <small id="{{entrypoint_type}}-path-note" class="form-text text-muted note">
-                Click <a href="">here</a> for instructions on adding a new {{entrypoint}} environment.
+                <a href="">Instructions on adding a new {{entrypoint}} environment</a>
             </small>
         </div>
 
@@ -162,6 +170,77 @@
 </div>
 
 <style scoped>
+    .add-button {
+        margin-left: 4px !important;
+    }
+
+    .form-group {
+        margin-bottom: 10px;
+    }
+
+    a {
+        text-decoration: underline;
+        color: black;
+    }
+    .clear-button {
+        margin-top: 10px;
+    }
+
+    /* Style the tab */
+    .selection-buttons {
+        padding: 10px !important;
+    }
+
+    .systems-tab-title {
+        background-color: rgb(133, 133, 133);
+        color: white;
+    }
+
+    .tab {
+        overflow: hidden;
+        border: 1px solid #ccc;
+        background-color: #f1f1f1;
+        margin-bottom: 20px;
+    }
+
+    /* Style the buttons that are used to open the tab content */
+    .tab button {
+        background-color: inherit;
+        float: left;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        padding: 14px 16px;
+        transition: 0.3s;
+    }
+
+    .tab p {
+        margin: 0;
+        float: left;
+        outline: none;
+        cursor: pointer;
+        padding: 14px 16px;
+        transition: 0.3s;
+    }
+
+    /* Change background color of buttons on hover */
+    .tab button:hover {
+        background-color: #ddd;
+    }
+
+    /* Create an active/current tablink class */
+    .tab button.active {
+        background-color: #ccc;
+    }
+
+    dl {
+        margin-bottom: 0px;
+    }
+
+    .title {
+        margin-bottom: 40px;
+    }
+
     .modal-body {
         min-height: 190px;
     }
@@ -178,9 +257,9 @@
         color: rgba(255, 0, 0, 0.788);
     }
 
-    .selection-buttons {
+    /* .selection-buttons {
         margin: 0px 10px 30px 10px;
-    }
+    } */
 
     .row {
         max-width: 900px;
@@ -240,7 +319,7 @@
 <!-- Create click handlers to swap selected system -->
 {% for system in systems %}
 <script type="text/javascript">
-    document.getElementById("select-{{system}}").addEventListener("click", function () {
+    document.getElementById("select-{{system['name']}}").addEventListener("click", function () {
         const url = new URL(window.location);
         url.searchParams.set("system", "{{system['name']}}");
         window.location.replace(url);
@@ -383,9 +462,13 @@
     async function deleteHandler(entrypoint_type) {
         const name = $(`#${entrypoint_type}`).val();
         const id = document.getElementsByName(name)[0].id;
-        const result = await deleteEntrypoint(id, entrypoint_type);
 
-        location.reload();
+        if (confirm(`Are you sure you want to delete ${name}? This will remove it for all systems.`)) {
+            const result = await deleteEntrypoint(id, entrypoint_type);
+
+
+            location.reload();
+        }
     }
 
     // sends DELETE to API endpoint

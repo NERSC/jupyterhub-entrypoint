@@ -19,6 +19,8 @@ c.EntrypointService.additional_handlers = [
 
 c.APIBaseHandler.validator = SSHValidator()
 
+c.EntrypointService.template_paths = ['/Users/josh/miniconda3/envs/test-hub/share/jupyterhub/entrypoint/templates']
+
 
 # Configuration file for application.
 
