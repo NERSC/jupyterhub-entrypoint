@@ -151,10 +151,10 @@ class APIUserSelectionHandler(APIBaseHandler):
         path = doc["entrypoint"]
         entrypoint_type = doc["type"]
         systems = doc["systems"]
-        host = doc["host"]
+        hosts = doc["hosts"]
 
         # validate the entrypoint to be added
-        result, message = await self.validator.validate(user, path, entrypoint_type, host)
+        result, message = await self.validator.validate(user, path, entrypoint_type, hosts)
 
         if result is True:
             print('Validation successful')

@@ -23,7 +23,7 @@
         </div>
     </div>
 
-    <!-- row of buttons to change selected system -->
+    <!-- row of tab buttons to change selected system -->
     {% if systems|length > 1 %}
     <div class="row">
         <div class="col-md-offset-2 col-md-8">
@@ -75,23 +75,28 @@
             <h4>Manage {{entrypoint}} Entrypoints</h4>
             <div class="form-group">
                 <span class="input-group">
-                    <!-- create text input to select environments -->
-                    <input type="search" id="{{entrypoint_type}}" name="{{entrypoint_type}}" class="form-control"
-                        list="list_{{entrypoint_type}}" autocomplete="off"
-                        placeholder="Select a {{entrypoint_type}} environment as entrypoint">
+                    <!-- create select dropdown to select environments -->
+                    <select id="{{entrypoint_type}}" name="{{entrypoint_type}}" class="form-control" disabled>
+                        <option disabled selected value> 
+                            -- select an option --
+                        </option>
+                    </select>
 
-                    <!-- create delete, select, and add buttons -->
+                    <!-- create select, delete, and add buttons -->
                     <span class="input-group-btn">
-                        {% if show_add_box %}
-                        <button type="button" onclick="deleteHandler('{{entrypoint_type}}')"
-                            class="btn btn-jupyter">delete</button>
-                        {% endif %}
                         <button type="button" onclick="selectHandler('{{entrypoint_type}}')"
-                            class="btn btn-jupyter">select</button>
+                            class="row-button btn btn-jupyter">select</button>
                         {% if show_add_box %}
-                        <button type="button" class="add-button btn btn-jupyter" data-toggle="modal"
-                            data-target="#add-{{entrypoint_type}}-modal">add</button>
+                        <button type="button" class="row-button btn btn-jupyter" data-toggle="modal"
+                            data-target="#add-{{entrypoint_type}}-modal">
+                            add
+                        </button>
+                        <button type="button" onclick="deleteHandler('{{entrypoint_type}}')"
+                            class="row-button btn btn-jupyter">
+                            delete
+                        </button>
                         {% endif %}
+
                     </span>
                 </span>
 
@@ -115,7 +120,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h4 class="modal-title" id="add-{{entrypoint_type}}-modal-title">
-                            Add a New {{entrypoint}} Entrypoint
+                            Add a New {{entrypoint}} Entrypoint for {{system["displayname"]}}
                         </h4>
                     </div>
                     <div class="modal-body">
@@ -125,22 +130,17 @@
                                     <!-- input field to add new path -->
                                     <input id="add-{{entrypoint_type}}-path" name="add-{{entrypoint_type}}-path"
                                         class="small-form form-control" autocomplete="off"
-                                        placeholder="New {{entrypoint_type}} environment path">
+                                        placeholder="Path for new {{entrypoint}} environment">
 
                                     <!-- input field to add new name -->
                                     <input id="add-{{entrypoint_type}}-name" name="add-{{entrypoint_type}}-name"
                                         class="form-control small-form" autocomplete="off"
-                                        placeholder="New {{entrypoint_type}} environment name">
+                                        placeholder="Name for new {{entrypoint}} environment">
 
                                     <!-- create a checkbox for each system for tagging -->
-                                    <p class="no-margin form-text"><b>Make entrypoint available for:</b></p>
+                                    <p class="no-margin form-text"><b>Make entrypoint also available for:</b></p>
                                     {% for sys in systems %}
-                                    {% if system == sys %}
-                                    <input type="checkbox" id="{{entrypoint_type}}-{{sys['name']}}-tag"
-                                        name="tag-{{entrypoint_type}}-for-{{system['name']}}" value="{{sys['name']}}"
-                                        checked>
-                                    <label class="checkbox-label" for="{{sys['name']}}">{{sys['displayname']}}</label>
-                                    {% else %}
+                                    {% if sys != system %}
                                     <input type="checkbox" id="{{entrypoint_type}}-{{sys['name']}}-tag"
                                         name="tag-{{entrypoint_type}}-for-{{system['name']}}" value="{{sys['name']}}">
                                     <label class="checkbox-label" for="{{sys['name']}}">{{sys['displayname']}}</label>
@@ -170,7 +170,7 @@
 </div>
 
 <style scoped>
-    .add-button {
+    .row-button {
         margin-left: 4px !important;
     }
 
@@ -182,6 +182,7 @@
         text-decoration: underline;
         color: black;
     }
+
     .clear-button {
         margin-top: 10px;
     }
@@ -189,6 +190,7 @@
     /* Style the tab */
     .selection-buttons {
         padding: 10px !important;
+        min-width: 85px;
     }
 
     .systems-tab-title {
@@ -257,13 +259,13 @@
         color: rgba(255, 0, 0, 0.788);
     }
 
-    /* .selection-buttons {
-        margin: 0px 10px 30px 10px;
-    } */
-
     .row {
         max-width: 900px;
         margin: auto;
+    }
+
+    .container {
+        padding-bottom: 40px;
     }
 
     h4 {
@@ -308,9 +310,11 @@
         const list = data[Object.keys(data)[0]];
         let content = "";
         $.each(list, function (index, value) {
-            content += `<option value="${value["name"]}" name="${value["name"]}" id="${value["id"]}" data-path="${value["entrypoint"]}">\n`;
+            content += `<option value="${value["name"]}" name="${value["name"]}" id="${value["id"]}" data-path="${value["entrypoint"]}"> ${value["name"]} </option>\n`;
         });
-        $("#list_{{entrypoint_type}}").html(content);
+
+        $("#{{entrypoint_type}}").append(content);
+
         $("#{{entrypoint_type}}").prop("disabled", false);
     });
 </script>
@@ -372,8 +376,9 @@
         const name = $(`#add-${entrypoint_type}-name`).val();
 
         const elems = document.getElementsByName(`tag-${entrypoint_type}-for-{{system}}`);
+        const hosts = ["{{hostname}}"]
 
-        let systems = [];
+        let systems = ["{{system}}"];
         elems.forEach((elem) => {
             if ($(`#${elem.id}`).is(":checked")) {
                 systems.push(elem.value);
@@ -390,7 +395,7 @@
         } else if (systems.length == 0) {
             result = { 'result': false, 'message': 'Error: No system selected' };
         } else {
-            result = await addEntrypoint(name, path, entrypoint_type, systems);
+            result = await addEntrypoint(name, path, entrypoint_type, systems, hosts);
         }
 
         if (!result.result) {
@@ -401,7 +406,7 @@
     }
 
     // POSTs a new entrypoint to the API endpoint
-    async function addEntrypoint(entrypoint_name, entrypoint_path, entrypoint_type, systems) {
+    async function addEntrypoint(entrypoint_name, entrypoint_path, entrypoint_type, systems, hosts) {
         const response = await $.ajax({
             method: "POST",
             url: "/services/entrypoint/users/{{user.name}}/systems/{{system}}",
@@ -410,7 +415,7 @@
                 "entrypoint": entrypoint_path,
                 "type": entrypoint_type,
                 "systems": systems,
-                "host": '{{hostname}}',
+                "hosts": hosts,
             }),
             contentType: "application/json; charset=utf-8",
             dataType: "json",
