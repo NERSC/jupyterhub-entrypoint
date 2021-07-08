@@ -33,7 +33,7 @@ class SSHValidator(BaseValidator, HubAuthenticated):
             print(response)
 
             if (response.exit_status != 0):
-                return False, 'Error: ' + str(response.stderr)
+                return False, f'Error ({host}): ' + str(response.stderr)
 
             response = response.stdout
             response = response.split(' ')[0]
@@ -52,10 +52,10 @@ class SSHValidator(BaseValidator, HubAuthenticated):
 
             # otherwise the error most likely is because of invalid ssh cert
             print('SSHError: ' + str(exc))
-            return False, 'SSHError: ' + str(exc)
+            return False, f'SSHError ({host}): ' + str(exc)
         except OSError as exc:
             print('OSError: ' + str(exc))
-            return False, 'OSError: ' + str(exc)
+            return False, f'OSError ({host}): ' + str(exc)
         except Exception as exc:
             print('Error: ' + str(exc))
             return False, f'Error ({host}): ' + str(exc)
@@ -72,7 +72,7 @@ class SSHValidator(BaseValidator, HubAuthenticated):
             print(response)
 
             if (response.exit_status != 0):
-                return False, f'Error: ({host})' + str(response.stderr)
+                return False, f'Error ({host}): ' + str(response.stderr)
 
             response = response.stdout
             response = response.split(' ')[0]
@@ -84,13 +84,13 @@ class SSHValidator(BaseValidator, HubAuthenticated):
             return True, 'Validation successful'
         except (asyncssh.Error) as exc:
             print('SSHError: SSH connection failed: ' + str(exc))
-            return False, 'SSHError: SSH connection failed: ' + str(exc)
+            return False, f'SSHError ({host}): SSH connection failed: ' + str(exc)
         except (OSError) as exc:
             print('OSError: ' + str(exc))
-            return False, 'OSError: ' + str(exc)
+            return False, f'OSError ({host}): ' + str(exc)
         except Exception as exc:
             print('Error: ' + str(exc))
-            return False, f'Error: ({host})' + str(exc)
+            return False, f'Error ({host}): ' + str(exc)
 
     async def _check_conda_env(self, user, path, host):
         async with asyncssh.connect(host, client_keys=[f'/certs/{user}.key'], username=user) as conn:
