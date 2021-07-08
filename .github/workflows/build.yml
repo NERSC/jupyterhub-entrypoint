@@ -27,5 +27,4 @@ jobs:
 
       # Install the extension and check that it installed correctly
       - run: pip install .
-      - run: |
-        pip list | grep jupyterhub-entrypoint
+      - run: pip list | grep jupyterhub-entrypoint
