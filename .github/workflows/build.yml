@@ -39,7 +39,7 @@ jobs:
       - run: pip install pytest
 
       # Start jupyterhub and run pytests
-      - run: echo "c.JupyterHub.services=[{'name':'entrypoint','url':'http://127.0.0.1:8889','command':['python', '-m', 'jupyterhub_entrypoint'] }]" > jupyterhub_config.py
+      - run: echo "c.JupyterHub.services=[{'name':'entrypoint','url':'http://127.0.0.1:8889','command':['python', '-m', 'jupyterhub_entrypoint'] }]\nc.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'" > jupyterhub_config.py
       - run: jupyterhub &
       - run: pytest tests/test.py
       
