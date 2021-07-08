@@ -23,8 +23,23 @@ jobs:
       # Install node requirements and then install jupyter
       - run: npm install
       - run: npm install -g configurable-http-proxy
-      - run: python -m pip install -U jupyterhub jupyterlab
+      - run: python -m pip install -U jupyterhub jupyterlab jupyterhub-dummyauthenticator
 
       # Install the extension and check that it installed correctly
       - run: pip install .
       - run: pip list | grep jupyterhub-entrypoint
+
+      # Download and install gecko web driver
+      - run: wget https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz
+      - run: sudo tar -xzf geckodriver-v0.26.0-linux64.tar.gz -C /usr/bin
+      - run: sudo chmod a+x /usr/bin/geckodriver
+
+      # Install selenium and pytest
+      - run: pip install selenium
+      - run: pip install pytest
+
+      # Start jupyterhub and run pytests
+      - run: echo c.JupyterHub.services = [{ 'name': 'entrypoint', 'url': 'http://127.0.0.1:8889', 'command': ['python', '-m', 'jupyterhub_entrypoint'] }] > jupyterhub_config.py
+      - run: jupyterhub &
+      - run: pytest tests/test.py
+      

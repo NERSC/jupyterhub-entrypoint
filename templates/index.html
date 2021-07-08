@@ -4,10 +4,24 @@
 <!-- if there are no systems set, show an error screen -->
 {% if systems|length == 0 %}
 <div class="container">
-    <h4>Sorry, nothing to see here...</h4>
-    <h4>If you believe this is a mistake, please contact the system administrator.</h4>
-    <br />
-    <h6>Error: The systems list has not been set in entrypoint_config.py.</h6>
+    <div class="row">
+        <div class="col-md-offset-2 col-md-8">
+            <div class="text-center title">
+                <h2 id="title">JupyterHub Entrypoint Service</h2>
+                <h5>Launch Jupyter notebooks in custom environments</h5>
+            </div>
+        </div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="col-md-offset-2 col-md-8">
+            <h4>Sorry, nothing to see here...</h4>
+            <h4>If you believe this is a mistake, please contact the system administrator.</h4>
+            <br />
+            <h6>Error: The systems list has not been set in entrypoint_config.py.</h6>
+        </div>
+    </div>
+
 </div>
 
 <!-- otherwise here is the main screen -->
@@ -17,7 +31,7 @@
     <div class="row">
         <div class="col-md-offset-2 col-md-8">
             <div class="text-center title">
-                <h2>JupyterHub Entrypoint Service</h2>
+                <h2 id="title">JupyterHub Entrypoint Service</h2>
                 <h5>Launch Jupyter notebooks in custom environments</h5>
             </div>
         </div>
