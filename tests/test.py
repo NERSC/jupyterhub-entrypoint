@@ -1,12 +1,5 @@
-import pytest
 import time
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support import expected_conditions
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.firefox.options import Options
 
 class Test():
@@ -27,9 +20,11 @@ class Test():
             return set(wh_now).difference(set(wh_then)).pop()
     
     def test(self):
+        # Open the browser
         self.driver.get('http://localhost:8000')
         self.driver.implicitly_wait(10)
 
+        # Login with dummy credentials
         username = self.driver.find_element_by_id('username_input')
         password = self.driver.find_element_by_id('password_input')
 
@@ -39,12 +34,13 @@ class Test():
         login_button = self.driver.find_element_by_id('login_submit')
         login_button.click()
 
+        # Open the services tab, then the entrypoint view
         services_button = self.driver.find_elements_by_xpath("//*[contains(text(), 'Services')]")[0]
         services_button.click()
 
         entrypoint_button = self.driver.find_elements_by_xpath("//*[contains(text(), 'entrypoint')]")[0]
         entrypoint_button.click()
 
+        # Make sure the page renders with the correct title
         title = self.driver.find_element_by_id('title')
-
         assert title.text == 'JupyterHub Entrypoint Service'
