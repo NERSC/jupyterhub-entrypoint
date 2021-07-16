@@ -312,7 +312,7 @@
 
 <!-- js code that handles API requests & updates DOM elements -->
 {% block script %}
-{% if systems|length > 1 %}
+{% if systems|length > 0 %}
 {{ super() }}
 
 {% set hostname = system['hostname'] %}
