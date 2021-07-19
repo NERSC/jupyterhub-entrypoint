@@ -114,6 +114,10 @@ class FileStorage(Storage):
         dir_path = self.dir_path(user, type)
 
         # attempt to read all files in a type directory
+        if (not os.path.exists(dir_path)):
+            self.log.info(f'{user} has no {type} entrypoints for {system}')
+            return None
+
         res = []
         for filename in os.listdir(dir_path):
             try:
