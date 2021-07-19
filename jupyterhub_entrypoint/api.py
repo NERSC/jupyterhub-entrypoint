@@ -3,7 +3,7 @@
 # Defines classes for the request handlers used in EntrypointService app
 #########################################################################
 
-import warnings
+import logging
 from tornado import escape, web
 from jupyterhub.services.auth import HubAuthenticated
 from traitlets.config import Configurable, Application
@@ -13,8 +13,12 @@ from traitlets import Instance, Unicode
 class BaseValidator:
     """Base class used to handle validation. Should be configured in entrypoint_config.py"""
 
+    def __init__(self):
+        logging.basicConfig(level=logging.INFO)
+        self.log = logging.getLogger(__name__)
+
     async def validate(self, user, path, entrypoint_type, host):
-        warnings.warn('No validator set in entrypoint_config.py', UserWarning)
+        self.log.warning('No validator set in entrypoint_config.py', UserWarning)
         return True, 'Warning: No validator set in entrypoint_config.py'
 
 
@@ -37,6 +41,8 @@ class APIBaseHandler(HubAuthenticated, web.RequestHandler, Application, Configur
 
     def initialize(self):
         super().initialize()
+        logging.basicConfig(level=logging.INFO)
+        self.log = logging.getLogger(__name__)
 
         # loads the config file to set the validator
         if self.config_file:
@@ -144,7 +150,7 @@ class APIUserSelectionHandler(APIBaseHandler):
         self.verify_user(user)
 
         doc = escape.json_decode(self.request.body)
-        print(f'Doc: {doc}')
+        self.log.info(f'Doc: {doc}')
 
         # add a new entrypoint as an option
         name = doc["name"]
@@ -157,19 +163,19 @@ class APIUserSelectionHandler(APIBaseHandler):
         result, message = await self.validator.validate(user, path, entrypoint_type, hosts)
 
         if result is True:
-            print('Validation successful')
+            self.log.info('Validation successful')
             self.storage.create(user,  name, path,
                                 entrypoint_type, systems)
             self.write(
                 {'result': True, 'message': 'Path successfully added'})
         else:
-            print('Validation failed')
+            self.log.warning('Validation failed')
             self.write({'result': False, 'message': message})
 
     @web.authenticated
     async def put(self, user):
         doc = escape.json_decode(self.request.body)
-        print(f'Doc: {doc}')
+        self.log.info(f'Doc: {doc}')
         
         entrypoint_id = doc["id"]
         entrypoint_type = doc["type"]
@@ -177,7 +183,7 @@ class APIUserSelectionHandler(APIBaseHandler):
         name = doc["name"]
         result = self.storage.update(user, name, path, entrypoint_id,
                                      entrypoint_type, self.system)
-        print('Finished selecting')
+        self.log.info('Finished selecting')
 
         if result:
             self.write(
