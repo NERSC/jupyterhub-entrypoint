@@ -49,7 +49,7 @@
                     {% else %}
                     <button id="select-{{sys['name']}}" class="tablinks selection-buttons">
                         {% endif %}
-                        {{sys['displayname']}}
+                        {{sys['display_name']}}
                     </button>
                     {% endfor %}
             </div>
@@ -62,10 +62,10 @@
         <div class="col-md-offset-2 col-md-8">
             <dl>
                 {% if system['hostname'] != '' %}
-                <dt>Selected custom entrypoint for {{system['displayname']}}
+                <dt>Selected custom entrypoint for {{system['display_name']}}
                     ({{user['name']}}@{{system['hostname']}}):</dt>
                 {% else %}
-                <dt>Selected custom entrypoint for {{system['displayname']}}:</dt>
+                <dt>Selected custom entrypoint for {{system['display_name']}}:</dt>
                 {% endif %}
                 <div>
                     <dd id="current-entrypoint">None</dd>
@@ -81,8 +81,9 @@
 
     {% for entrypoint_type in entrypoint_types %}
     {% set show_add_box = entrypoint_type['mutable'] %}
-    {% set entrypoint = entrypoint_type['displayname'] %}
-    {% set entrypoint_type = entrypoint_type['name'] %}
+    {% set entrypoint = entrypoint_type['display_name'] %}
+    {% set type = entrypoint_type['name'] %}
+    {% set link = entrypoint_type['help_link'] if 'help_link' in entrypoint_type else '' %}
     <!-- create a row to manage each entrypoint type -->
     <div class="row">
         <div class="update-entrypoint col-md-offset-2 col-md-8">
@@ -90,7 +91,7 @@
             <div class="form-group">
                 <span class="input-group">
                     <!-- create select dropdown to select environments -->
-                    <select id="{{entrypoint_type}}" name="{{entrypoint_type}}" class="form-control" disabled>
+                    <select id="{{type}}" name="{{type}}" class="form-control" disabled>
                         <option disabled selected value>
                             -- select an option --
                         </option>
@@ -98,14 +99,14 @@
 
                     <!-- create select, delete, and add buttons -->
                     <span class="input-group-btn">
-                        <button type="button" onclick="selectHandler('{{entrypoint_type}}')"
+                        <button type="button" onclick="selectHandler('{{type}}')"
                             class="row-button btn btn-jupyter">select</button>
                         {% if show_add_box %}
                         <button type="button" class="row-button btn btn-jupyter" data-toggle="modal"
-                            data-target="#add-{{entrypoint_type}}-modal">
+                            data-target="#add-{{type}}-modal">
                             add
                         </button>
-                        <button type="button" onclick="deleteHandler('{{entrypoint_type}}')"
+                        <button type="button" onclick="deleteHandler('{{type}}')"
                             class="row-button btn btn-jupyter">
                             delete
                         </button>
@@ -115,39 +116,41 @@
                 </span>
 
                 <!-- create the list of options for the input box above -->
-                <datalist id="list_{{entrypoint_type}}">
-                    {% set vars = "list_{{entrypoint_type}}"%}
+                <datalist id="list_{{type}}">
+                    {% set vars = "list_{{type}}"%}
                     {% for elem in vars %}
                     <option value="{{ elem }}">
                     </option>
                     {% endfor %}
                 </datalist>
             </div>
-            <small id="{{entrypoint_type}}-path-note" class="form-text text-muted note">
-                <a href="">Instructions on adding a new {{entrypoint}} environment</a>
+            {% if link != '' %}
+            <small id="{{type}}-path-note" class="form-text text-muted note">
+                <a href="{{link}}">Instructions on adding a new {{entrypoint}} environment</a>
             </small>
+            {% endif %}
         </div>
 
         <!-- create a modal for adding new entrypoints -->
-        <div class="modal fade" id="add-{{entrypoint_type}}-modal" tabindex="-1" role="dialog">
+        <div class="modal fade" id="add-{{type}}-modal" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h4 class="modal-title" id="add-{{entrypoint_type}}-modal-title">
-                            Add a New {{entrypoint}} Entrypoint for {{system["displayname"]}}
+                        <h4 class="modal-title" id="add-{{type}}-modal-title">
+                            Add a New {{entrypoint}} Entrypoint for {{system["display_name"]}}
                         </h4>
                     </div>
                     <div class="modal-body">
-                        <div id="add-{{entrypoint_type}}" class="add-entrypoint col-md-offset-2 col-md-8">
+                        <div id="add-{{type}}" class="add-entrypoint col-md-offset-2 col-md-8">
                             <div class="form-group">
                                 <div class="input-group">
                                     <!-- input field to add new path -->
-                                    <input id="add-{{entrypoint_type}}-path" name="add-{{entrypoint_type}}-path"
+                                    <input id="add-{{type}}-path" name="add-{{type}}-path"
                                         class="small-form form-control" autocomplete="off"
                                         placeholder="Path for new {{entrypoint}} environment">
 
                                     <!-- input field to add new name -->
-                                    <input id="add-{{entrypoint_type}}-name" name="add-{{entrypoint_type}}-name"
+                                    <input id="add-{{type}}-name" name="add-{{type}}-name"
                                         class="form-control small-form" autocomplete="off"
                                         placeholder="Name for new {{entrypoint}} environment">
 
@@ -155,26 +158,26 @@
                                     <p class="no-margin form-text"><b>Make entrypoint also available for:</b></p>
                                     {% for sys in systems %}
                                     {% if sys != system %}
-                                    <input type="checkbox" id="{{entrypoint_type}}-{{sys['name']}}-tag"
-                                        name="tag-{{entrypoint_type}}-for-{{system['name']}}" value="{{sys['name']}}"
+                                    <input type="checkbox" id="{{type}}-{{sys['name']}}-tag"
+                                        name="tag-{{type}}-for-{{system['name']}}" value="{{sys['name']}}"
                                         data-host="{{sys['hostname']}}">
-                                    <label class="checkbox-label" for="{{sys['name']}}">{{sys['displayname']}}</label>
+                                    <label class="checkbox-label" for="{{sys['name']}}">{{sys['display_name']}}</label>
                                     {% endif %}
                                     {% endfor %}
                                 </div>
                             </div>
                             <!-- where to show messages if necessary -->
                             <div>
-                                <small id="{{entrypoint_type}}-error-msg"
+                                <small id="{{type}}-error-msg"
                                     class="form-text text-muted error note"></small>
-                                <small id="{{entrypoint_type}}-msg" class="form-text text-muted note"></small>
+                                <small id="{{type}}-msg" class="form-text text-muted note"></small>
                             </div>
                         </div>
                     </div>
                     <!-- create cancel and add buttons for foot of the modal -->
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" onclick="addHandler('{{entrypoint_type}}')">
+                        <button type="button" class="btn btn-primary" onclick="addHandler('{{type}}')">
                             Add entrypoint
                         </button>
                     </div>

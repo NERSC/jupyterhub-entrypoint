@@ -62,7 +62,7 @@ class EntrypointService(Application, Configurable):
 
     entrypoint_types = List(
         [],
-        help="A list of dicts: (name: str, displayname: str, mutable: bool)"
+        help="A list of dicts: (name: str, display_name: str, mutable: bool)"
     ).tag(config=True)
 
     file_storage_template_path = Unicode(
