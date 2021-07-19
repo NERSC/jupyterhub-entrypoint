@@ -7,6 +7,7 @@
 
 import os
 import sys
+import logging
 from tornado import ioloop, web
 from jinja2 import FileSystemLoader
 
@@ -105,6 +106,11 @@ class EntrypointService(Application, Configurable):
         help="Search paths for jinja templates, coming before default ones"
     ).tag(config=True)
 
+    tornado_logs = Bool(
+        False,
+        help="Determines whether tornado.access logs be included in stdout"
+    ).tag(config=True)
+
     # set the default value for the logo file
     @default("logo_file")
     def _logo_file_default(self):
@@ -124,6 +130,10 @@ class EntrypointService(Application, Configurable):
     def initialize(self, argv=None):
         super().initialize(argv)
 
+        logging.basicConfig(level=logging.INFO)
+        logging.getLogger('tornado.access').disabled = not self.tornado_logs
+        self.log = logging.getLogger(__name__)
+
         if self.generate_config:
             print(self.generate_config_file())
             sys.exit(0)
@@ -141,7 +151,7 @@ class EntrypointService(Application, Configurable):
             if path not in self.template_paths:
                 self.template_paths.append(path)
 
-        print(self.template_paths)
+        self.log.info(self.template_paths)
 
         # create a jinja loader to get the necessary html templates
         loader = FileSystemLoader(self.template_paths)
@@ -192,7 +202,7 @@ class EntrypointService(Application, Configurable):
         # service_prefix/users/{user}/systems/{system} to get a user's selected entrypoint for a system
         # service_prefix/validate/users/{user}/systems/{system} to re-validate a user's selected entrypoint for a system
         for handler in handlers:
-            print(handler[0])
+            self.log.info(handler[0])
 
         # use the settings and handlers to create a Tornado web app
         self.app = web.Application(handlers, **self.settings)

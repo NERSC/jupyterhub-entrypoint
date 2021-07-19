@@ -6,6 +6,7 @@
 
 import os
 import json
+import logging
 
 from aiocache import cached
 from aiocache.serializers import NullSerializer
@@ -79,7 +80,8 @@ class APIShifterImageHandler(ShifterImageHandler, Configurable):
             response = await client.fetch(f"{self.shifter_api_host}/list/{user}",
                                           headers={"Authorization": self.shifter_api_token})
         except Exception as e:
-            print("Error: %s" % e)
+            logging.basicConfig(level=logging.INFO)
+            logging.warning("Error: %s" % e)
             return []
         else:
             doc = escape.json_decode(response.body)

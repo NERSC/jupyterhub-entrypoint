@@ -7,6 +7,7 @@
 import os
 import json
 import uuid
+import logging
 from pathlib import Path
 
 
@@ -66,6 +67,8 @@ class FileStorage(Storage):
     # define the default path template if not set when object is created
     def __init__(self, template='./data/{user[0]}/{user}/{type}/{uuid}.json'):
         self.template = template
+        logging.basicConfig(level=logging.INFO)
+        self.log = logging.getLogger(__name__)
 
     # return the parent directory for a certain file type
     def dir_path(self, user, type):
@@ -84,7 +87,7 @@ class FileStorage(Storage):
     def create(self, user, name, path, entrypoint_type, systems, default_id=0):
         # create a path for new entrypoint as /{user}/{type}/{uuid}.json, hold on to the generated id
         doc_path, id = self.doc_path(user, entrypoint_type, default_id)
-        print(f'Creating new file: {doc_path}')
+        self.log.info(f'Creating new file: {doc_path}')
 
         # default_id can be overwritten to provide a custom file name in the form {entrypoint_type}/{default_id}.json
         if default_id != 0:
@@ -101,7 +104,7 @@ class FileStorage(Storage):
                 json.dump(dat, f)
             return True
         except Exception as e:
-            print('Error: ' + str(e))
+            self.log.error('Error: ' + str(e))
         return False
 
     # reads all the files in a type folder for a given system (e.g. all conda files marked for 'cori')
@@ -121,7 +124,7 @@ class FileStorage(Storage):
                         if system in dat['systems']:
                             res.append(dat)
             except Exception as e:
-                print(
+                self.log.error(
                     f'Error trying to read: {filename} ({type}, {system}): {str(e)}')
 
         if res != []:
@@ -131,7 +134,7 @@ class FileStorage(Storage):
     # change the current selected entrypoint for a certain system
     # returns True if the '{system}/current.json' is created/updated, False otherwise
     def update(self, user, name, path, entrypoint_id, entrypoint_type, system):
-        print(f'Updating with: {entrypoint_type}/{entrypoint_id}.json')
+        self.log.info(f'Updating with: {entrypoint_type}/{entrypoint_id}.json')
 
         # create the directory path for the system
         out_dir = self.dir_path(user, system)
@@ -141,7 +144,7 @@ class FileStorage(Storage):
         outfile = Path(os.path.join(out_dir, 'current.json'))
         outfile.parent.mkdir(parents=True, exist_ok=True)
 
-        print(f'Writing to {outfile}')
+        self.log.info(f'Writing to {outfile}')
         # attempt to write to the '{system}/current.json' file to update the selected entrypoint
         try:
             with open(outfile, 'w') as f:
@@ -150,7 +153,7 @@ class FileStorage(Storage):
                 json.dump(dat, f)
             return True
         except Exception as e:
-            print(f'Update Error: {e}')
+            self.log.error(f'Update Error: {e}')
 
         return False
 
@@ -169,6 +172,4 @@ class FileStorage(Storage):
 
 if __name__ == '__main__':
     import doctest
-    # disable print so it doesn't conflict with doctest
-    print = lambda *args, **kwargs: None
     doctest.testmod(optionflags=doctest.ELLIPSIS)

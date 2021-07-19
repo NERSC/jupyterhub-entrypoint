@@ -2,6 +2,7 @@ from jupyterhub_entrypoint.api import BaseValidator
 from jupyterhub.services.auth import HubAuthenticated
 import asyncssh
 import os
+import logging
 
 # can be used to override BaseValidator by including the following in entrypoint_config.py:
 # c.APIBaseHandler.validator = SSHValidator()
@@ -10,11 +11,15 @@ import os
 class SSHValidator(BaseValidator, HubAuthenticated):
     """Uses ssh to communicate to remote systems and ensure paths are valid"""
 
+    def __init__(self):
+        logging.basicConfig(level=logging.INFO)
+        self.log = logging.getLogger(__name__)
+
     async def validate(self, user, path, entrypoint_type, hosts):
         result = True
 
         for host in hosts:
-            print(f'Validating {path} ({entrypoint_type}) ({user}@{host})')
+            self.log.info(f'Validating {path} ({entrypoint_type}) ({user}@{host})')
 
             if entrypoint_type == 'conda':
                 result = result and await self._validate_conda(user, path, host)
@@ -30,7 +35,7 @@ class SSHValidator(BaseValidator, HubAuthenticated):
     async def _validate_script(self, user, path, host):
         try:
             response = await self._check_script(user, path, host)
-            print(response)
+            self.log.info(response)
 
             if (response.exit_status != 0):
                 return False, f'Error ({host}): ' + str(response.stderr)
@@ -47,17 +52,17 @@ class SSHValidator(BaseValidator, HubAuthenticated):
         except asyncssh.Error as exc:
             # occurs when file is not found
             if 'non-zero exit status 2' in str(exc): 
-                print('Error: ' + str(exc))
+                self.log.error('Error: ' + str(exc))
                 return False, f'Error ({host}): Invalid path, no such file or directory'
 
             # otherwise the error most likely is because of invalid ssh cert
-            print('SSHError: ' + str(exc))
+            self.log.error('SSHError: ' + str(exc))
             return False, f'SSHError ({host}): ' + str(exc)
         except OSError as exc:
-            print('OSError: ' + str(exc))
+            self.log.error('OSError: ' + str(exc))
             return False, f'OSError ({host}): ' + str(exc)
         except Exception as exc:
-            print('Error: ' + str(exc))
+            self.log.error('Error: ' + str(exc))
             return False, f'Error ({host}): ' + str(exc)
 
     async def _check_script(self, user, path, host):
@@ -68,8 +73,8 @@ class SSHValidator(BaseValidator, HubAuthenticated):
     async def _validate_conda(self, user, path, host):
         try:
             response = await self._check_conda_env(user, path, host)
-            print('Response:')
-            print(response)
+            self.log.info('Response:')
+            self.log.info(response)
 
             if (response.exit_status != 0):
                 return False, f'Error ({host}): ' + str(response.stderr)
@@ -83,13 +88,13 @@ class SSHValidator(BaseValidator, HubAuthenticated):
                 return False, f'Error ({host}): {os.path.join(path, "bin", "jupyter-labhub")} is not executable'
             return True, 'Validation successful'
         except (asyncssh.Error) as exc:
-            print('SSHError: SSH connection failed: ' + str(exc))
+            self.log.error('SSHError: SSH connection failed: ' + str(exc))
             return False, f'SSHError ({host}): SSH connection failed: ' + str(exc)
         except (OSError) as exc:
-            print('OSError: ' + str(exc))
+            self.log.error('OSError: ' + str(exc))
             return False, f'OSError ({host}): ' + str(exc)
         except Exception as exc:
-            print('Error: ' + str(exc))
+            self.log.error('Error: ' + str(exc))
             return False, f'Error ({host}): ' + str(exc)
 
     async def _check_conda_env(self, user, path, host):
