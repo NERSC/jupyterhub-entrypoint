@@ -71,19 +71,19 @@ The `systems` configuration option must be set to maintain different system prof
     c.EntrypointService.systems = [
         {
             'name': 'cori', 
-            'displayname': 'Cori', 
+            'display_name': 'Cori', 
             'hostname': 'cori.nersc.gov'
         },
         {
             'name': 'perlmutter', 
-            'displayname': 'Perlmutter', 
+            'display_name': 'Perlmutter', 
             'hostname': 'perlmutter.nersc.gov'
         }
     ]
 
 - `name` is used to form the path for API endpoints and file paths and should not have any characters such as spaces or slashes that can invalidate paths. Numbers and letters are good.
 
-- `displayname` is how the system is labeled in the UI. Use all the spaces and slashes you want.
+- `display_name` is how the system is labeled in the UI. Use all the spaces and slashes you want.
 
 - `hostname` is the DNS domain name. This is not used by default but can be used to handle validation through ssh. If you do not want to use a hostname, include an empty string
 
@@ -92,26 +92,29 @@ Next the `entrypoint_types` configuration option must be set to allow users the 
     c.EntrypointService.entrypoint_types = [
         {
             'name': 'conda', 
-            'displayname': 'Conda', 
+            'display_name': 'Conda', 
             'mutable': True
+            'help_link': 'http://link_to_docs'
         },
         {
             'name': 'script', 
-            'displayname': 'Startup Script', 
+            'display_name': 'Startup Script', 
             'mutable': True
         },
         {
             'name': 'shifter', 
-            'displayname': 'Shifter Image', 
+            'display_name': 'Shifter Image', 
             'mutable': False
         }
     ]
 
 - `name` is used to form the path for API endpoints and file paths and should not have any characters such as spaces or slashes that can invalidate paths. Numbers and letters are good.
 
-- `displayname` is how the system is labeled in the UI. Use all the spaces and slashes you want.
+- `display_name` is how the system is labeled in the UI. Use all the spaces and slashes you want.
 
 - `mutable` controls whether the UI should include options to add and delete a given entrypoint type. This is useful if an administrator wants to control available entrypoints or if those entrypoints are set in a separate service. At NERSC, available shifter images are set through a separate API, so `mutable` is set to false above.
+
+- `help_link` is an optional parameter that allows admins to link to external documentation on how to add certain types of entrypoint types. If included there will be a link added below the entrypoint dropdown menu.
 
 Other important configuration settings include:
 - `c.EntrypointService.additional_handlers`
