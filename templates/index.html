@@ -362,10 +362,10 @@
         try {
             await $.get(`/services/entrypoint/users/{{user.name}}/systems/${system.toLowerCase()}`, function (data) {
                 if (Object.keys(data).length !== 0) {
-                    const type = data["{{user.name}}"][0]["type"];
+                    const type = data["{{user.name}}"]["type"];
                     let prefix = (type === "") ? "None" : type.capitalize() + ": ";
-                    const env = data["{{user.name}}"][0]["name"];
-                    const path = data["{{user.name}}"][0]["entrypoint"]
+                    const env = data["{{user.name}}"]["name"];
+                    const path = data["{{user.name}}"]["entrypoint"]
                     if (path !== env) {
                         content = `${prefix + env} (${path})`;
                     } else {
