@@ -18,7 +18,7 @@ from jupyterhub.utils import url_path_join
 from jupyterhub._data import DATA_FILES_PATH
 from jupyterhub.handlers.static import LogoHandler
 
-from .api import APIPathHandler, APIUserSelectionHandler, APIUserValidationHandler
+from .api import APIHubHandler, APIPathHandler, APIUserSelectionHandler, APIUserValidationHandler
 from .ssl_context import SSLContext
 from .view import ViewHandler
 from .storage import FileStorage
@@ -172,13 +172,20 @@ class EntrypointService(Application, Configurable):
         # add any handlers set in the config file to the list of handlers
         handlers += self.additional_handlers
 
-        # create an APIUserSelectionHandler for each system set in the config file
+        # create an APIUserSelectionHandler and APIUserValidationHandler for each system set in the config file
         for system in self.systems:
             handlers += [(rf"users/(.+)/systems/{system['name']}",
                           APIUserSelectionHandler, {"system": system['name']}),
 
                          (rf"validate/users/(.+)/systems/{system['name']}",
-                          APIUserValidationHandler, {"system": system['name'], "host": system['hostname']})]
+                          APIUserValidationHandler, {"system": system['name'], "host": system['hostname']}),          
+                        ]
+
+        # create an APIHubHandler for each system
+        for system in self.systems:
+            handlers += [(rf"hub/users/(.+)/systems/{system['name']}",
+                          APIHubHandler, {"system": system['name']})]
+        
 
         # create an APIPathHandler for each entrypoint type set in the config file
         for entrypoint in self.entrypoint_types:

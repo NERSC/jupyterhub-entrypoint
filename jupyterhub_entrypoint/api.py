@@ -49,10 +49,8 @@ class APIBaseHandler(HubAuthenticated, web.RequestHandler, Application, Configur
         if self.config_file:
             self.load_config_file(self.config_file)
 
-        # retrieve needed variables from the EntrypointService app settings
+        # retrieve storage object from the EntrypointService app settings
         self.storage = self.settings['storage']
-        self.service_prefix = self.settings['service_prefix']
-        self.api_token = self.settings['entrypoint_api_token']
 
     # ensures the logged in user is authorized to view/edit settings
     def verify_user(self, user):
@@ -60,10 +58,30 @@ class APIBaseHandler(HubAuthenticated, web.RequestHandler, Application, Configur
         if not current_user.get('admin', False) and current_user['name'] != user:
             raise web.HTTPError(403)
 
-class HubProfileHandler(APIBaseHandler):
+class APIHubHandler(web.RedirectHandler, Application, Configurable):
+    """
+    Handler that is used to read current entrypoints from the hub with an auth token
+    
+    Intended for use in the pre-hook spawn function
+    """
+
+
+    config_file = Unicode(
+        "entrypoint_config.py",
+        help="Config file to load"
+    ).tag(config=True)
+    
     def initialize(self, system):
         super().initialize()
+        logging.basicConfig(level=logging.INFO)
+        self.log = logging.getLogger(__name__)
         self.system = system
+
+        if self.config_file:
+            self.load_config_file(self.config_file)
+        
+        self.storage = self.settings['storage']
+        
     
     async def get(self, user):
         token = self.request.headers.get('Authorization')
