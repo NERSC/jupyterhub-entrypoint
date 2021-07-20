@@ -115,7 +115,7 @@ class FileStorage(Storage):
 
         # attempt to read all files in a type directory
         if (not os.path.exists(dir_path)):
-            self.log.info(f'{user} has no {type} entrypoints for {system}')
+            self.log.info(f'{user} has no {type if type != system else "current"} entrypoints for {system}')
             return None
 
         res = []

@@ -86,12 +86,6 @@ class EntrypointService(Application, Configurable):
         help="Entrypoint service prefix"
     ).tag(config=True)
 
-    service_url = Unicode(
-        os.environ.get("JUPYTERHUB_SERVICE_URL",
-                       "http://proxy:8000"),
-        help="Entrypoint service url"
-    ).tag(config=True)
-
     storage_path = Unicode(
         os.environ.get("STORAGE_PATH", "./data"),
         help="Location for file storage"
@@ -159,7 +153,6 @@ class EntrypointService(Application, Configurable):
         # create a dict of settings to pass on to the request handlers
         self.settings = {
             "service_prefix": self.service_prefix,
-            "service_url": self.service_url,
             "entrypoint_api_token": self.entrypoint_api_token,
             "static_path": os.path.join(self.data_files_path, "static"),
             "static_url_prefix": url_path_join(self.service_prefix, "static/"),

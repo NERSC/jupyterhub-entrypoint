@@ -24,8 +24,8 @@ file_env() {
 }
 
 file_env 'JUPYTERHUB_API_TOKEN'
-file_env 'HUB_PROFILES_TOKEN'
 file_env 'SHIFTER_API_TOKEN'
+file_env 'ENTRYPOINT_AUTH_TOKEN'
 
 for u in $(ls /home/); do
     cp /run/secrets/creds /tmp/$u.key

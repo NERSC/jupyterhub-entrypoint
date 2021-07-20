@@ -3,6 +3,7 @@
 # Defines classes for the request handlers used in EntrypointService app
 #########################################################################
 
+import os
 import logging
 from tornado import escape, web
 from jupyterhub.services.auth import HubAuthenticated
@@ -51,13 +52,28 @@ class APIBaseHandler(HubAuthenticated, web.RequestHandler, Application, Configur
         # retrieve needed variables from the EntrypointService app settings
         self.storage = self.settings['storage']
         self.service_prefix = self.settings['service_prefix']
-        self.service_url = self.settings['service_url']
         self.api_token = self.settings['entrypoint_api_token']
 
     # ensures the logged in user is authorized to view/edit settings
     def verify_user(self, user):
         current_user = self.get_current_user()
         if not current_user.get('admin', False) and current_user['name'] != user:
+            raise web.HTTPError(403)
+
+class HubProfileHandler(APIBaseHandler):
+    def initialize(self, system):
+        super().initialize()
+        self.system = system
+    
+    async def get(self, user):
+        token = self.request.headers.get('Authorization')
+        if token == os.environ['ENTRYPOINT_AUTH_TOKEN']:
+            info = self.storage.read(user, self.system, self.system)
+            if info:
+                self.write(info)
+            else:
+                self.write({})
+        else:
             raise web.HTTPError(403)
 
 
@@ -128,6 +144,8 @@ class APIUserSelectionHandler(APIBaseHandler):
 
         if info:
             self.write(info)
+        else:
+            self.write({})
 
     # deletes an entrypoint from the list of possible entrypoints
     # the request's body must have a "type" and "id" field
@@ -138,8 +156,8 @@ class APIUserSelectionHandler(APIBaseHandler):
         entrypoint_type = doc["type"]
         id = doc["id"]
 
-        self.storage.delete(user, entrypoint_type, id)
-        self.write({'result': True})
+        result = self.storage.delete(user, entrypoint_type, id)
+        self.write({'result': result})
 
     # handles adding or selecting an entrypoint
     # the requests body must have an "action" field (either 'add' or 'select')

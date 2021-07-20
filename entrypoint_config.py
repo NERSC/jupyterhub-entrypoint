@@ -127,10 +127,6 @@ c.EntrypointService.template_paths = [
 #  Default: '/services/entrypoint/'
 # c.EntrypointService.service_prefix = '/services/entrypoint/'
 
-# Entrypoint service url
-#  Default: 'http://proxy:8000'
-# c.EntrypointService.service_url = 'http://proxy:8000'
-
 # Instead of starting the Application, dump configuration to stdout
 #  See also: Application.show_config
 # c.EntrypointService.show_config = False
