@@ -132,7 +132,10 @@ class FileStorage(Storage):
                     f'Error trying to read: {filename} ({type}, {system}): {str(e)}')
 
         if res != []:
-            return {user: res}
+            if type == system:
+                return {user: res[0]}
+            else:
+                return {user: res}
         return None
 
     # change the current selected entrypoint for a certain system

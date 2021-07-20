@@ -24,13 +24,13 @@ class SSHValidator(BaseValidator, HubAuthenticated):
             if entrypoint_type == 'conda':
                 result = result and await self._validate_conda(user, path, host)
             elif entrypoint_type == 'script':
-                result = result and self._validate_script(user, path, host)
+                result = result and await self._validate_script(user, path, host)
             elif entrypoint_type == 'shifter':
-                result = result and self._validate_shifter(user)
+                result = result and await self._validate_shifter(user)
             else:
                 return False, 'Error: invalid entrypoint type'
         
-        return result
+        return result, 'Validation successful'
 
     async def _validate_script(self, user, path, host):
         try:
@@ -48,7 +48,8 @@ class SSHValidator(BaseValidator, HubAuthenticated):
             if response[3] != 'x':
                 return False, f'Error ({host}): File is not executable'
 
-            return True, 'Validation successful'
+            return True
+
         except asyncssh.Error as exc:
             # occurs when file is not found
             if 'non-zero exit status 2' in str(exc): 
@@ -86,7 +87,8 @@ class SSHValidator(BaseValidator, HubAuthenticated):
             # e.g. file should have permissions -rwxr--r--
             if response[3] != 'x':
                 return False, f'Error ({host}): {os.path.join(path, "bin", "jupyter-labhub")} is not executable'
-            return True, 'Validation successful'
+            return True
+
         except (asyncssh.Error) as exc:
             self.log.error('SSHError: SSH connection failed: ' + str(exc))
             return False, f'SSHError ({host}): SSH connection failed: ' + str(exc)
