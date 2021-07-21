@@ -26,7 +26,7 @@ class ShifterImageHandler(HubAuthenticated, web.RequestHandler):
 
     # format the result of the returned image
     def format_image(self, image):
-        return {"name": image, "entrypoint": image, "cmd": f"shifter --image={image}", "type": "shifter", "id": ""}
+        return {"name": image, "entrypoint": image, "cmd": f"shifter --image={image} jupyter-labhub", "type": "shifter", "id": ""}
     allow_admin = True
 
     # validate user and call self._get(), returns formated dict of {user: [list of images]}

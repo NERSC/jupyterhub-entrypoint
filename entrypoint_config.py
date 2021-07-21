@@ -34,7 +34,7 @@ c.EntrypointService.entrypoint_types = [
         'name': 'shifter',
         'display_name': 'Shifter Image',
         'mutable': False,
-        'cmd_template': 'shifter --image={path}',
+        'cmd_template': 'shifter --image={path} jupyterlab-hub',
         'help_link': 'http://localhost:8000/services/entrypoint/'
     }
 ]
