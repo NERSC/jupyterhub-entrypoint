@@ -71,16 +71,16 @@ class FileStorage(Storage):
         self.log = logging.getLogger(__name__)
 
     # return the parent directory for a certain file type
-    def dir_path(self, user, type):
+    def dir_path(self, user, entrypoint_type):
         uuid = 0  # we're interested in getting the parent folder, so uuid can be anything
-        return Path(self.template.format(user=user, type=type, uuid=uuid)).parent
+        return Path(self.template.format(user=user, type=entrypoint_type, uuid=uuid)).parent
 
     # return the file path for a new json file
-    def doc_path(self, user, type, default_id=0):
+    def doc_path(self, user, entrypoint_type, default_id=0):
         id = str(uuid.uuid4())
         if default_id != 0:
             id = default_id
-        return Path(self.template.format(user=user, type=type, uuid=id)), id
+        return Path(self.template.format(user=user, type=entrypoint_type, uuid=id)), id
 
     # record a new entrypoint by creating a new json file for it
     # returns True if a new file is created successfully, otherwise returns False
@@ -109,13 +109,13 @@ class FileStorage(Storage):
 
     # reads all the files in a type folder for a given system (e.g. all conda files marked for 'cori')
     # returns an array of the read entrypoint information, or None if the array is empty
-    def read(self, user, type, system):
+    def read(self, user, entrypoint_type, system):
         # get the directory for the type to be read
-        dir_path = self.dir_path(user, type)
+        dir_path = self.dir_path(user, entrypoint_type)
 
         # attempt to read all files in a type directory
         if (not os.path.exists(dir_path)):
-            self.log.info(f'{user} has no {type if type != system else "current"} entrypoints for {system}')
+            self.log.info(f'{user} has no {entrypoint_type if entrypoint_type != system else "current"} entrypoints for {system}')
             return None
 
         res = []
@@ -129,10 +129,10 @@ class FileStorage(Storage):
                             res.append(dat)
             except Exception as e:
                 self.log.error(
-                    f'Error trying to read: {filename} ({type}, {system}): {str(e)}')
+                    f'Error trying to read: {filename} ({entrypoint_type}, {system}): {str(e)}')
 
         if res != []:
-            if type == system:
+            if entrypoint_type == system:
                 return {user: res[0]}
             else:
                 return {user: res}
@@ -166,8 +166,8 @@ class FileStorage(Storage):
 
     # delete a json file by type and id
     # returns True if a file is deleted, False otherwise
-    def delete(self, user, type, id):
-        dir_path = self.dir_path(user, type)
+    def delete(self, user, entrypoint_type, id):
+        dir_path = self.dir_path(user, entrypoint_type)
         doc_path = Path(os.path.join(dir_path), f'{id}.json')
 
         try:
