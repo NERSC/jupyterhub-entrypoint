@@ -58,7 +58,7 @@ class APIBaseHandler(HubAuthenticated, web.RequestHandler, Application, Configur
         if not current_user.get('admin', False) and current_user['name'] != user:
             raise web.HTTPError(403)
 
-class APIHubHandler(web.RedirectHandler, Application, Configurable):
+class APIHubHandler(web.RequestHandler, Application, Configurable):
     """
     Handler that is used to read current entrypoints from the hub with an auth token
     
