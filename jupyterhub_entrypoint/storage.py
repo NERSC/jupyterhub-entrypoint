@@ -84,7 +84,7 @@ class FileStorage(Storage):
 
     # record a new entrypoint by creating a new json file for it
     # returns True if a new file is created successfully, otherwise returns False
-    def create(self, user, name, path, entrypoint_type, systems, default_id=0):
+    def create(self, user, name, path, cmd, entrypoint_type, systems, default_id=0):
         # create a path for new entrypoint as /{user}/{type}/{uuid}.json, hold on to the generated id
         doc_path, id = self.doc_path(user, entrypoint_type, default_id)
         self.log.info(f'Creating new file: {doc_path}')
@@ -99,7 +99,7 @@ class FileStorage(Storage):
         # attempt to write the information to the doc path
         try:
             with open(doc_path, 'w') as f:
-                dat = {"name": name, "entrypoint": path,
+                dat = {"name": name, "entrypoint": path, "cmd": cmd,
                        "type": entrypoint_type, "systems": systems, "id": id}
                 json.dump(dat, f)
             return True
@@ -115,7 +115,8 @@ class FileStorage(Storage):
 
         # attempt to read all files in a type directory
         if (not os.path.exists(dir_path)):
-            self.log.info(f'{user} has no {entrypoint_type if entrypoint_type != system else "current"} entrypoints for {system}')
+            self.log.info(
+                f'{user} has no {entrypoint_type if entrypoint_type != system else "current"} entrypoints for {system}')
             return None
 
         res = []
@@ -140,7 +141,7 @@ class FileStorage(Storage):
 
     # change the current selected entrypoint for a certain system
     # returns True if the '{system}/current.json' is created/updated, False otherwise
-    def update(self, user, name, path, entrypoint_id, entrypoint_type, system):
+    def update(self, user, name, path, cmd, entrypoint_id, entrypoint_type, system):
         self.log.info(f'Updating with: {entrypoint_type}/{entrypoint_id}.json')
 
         # create the directory path for the system
@@ -155,7 +156,7 @@ class FileStorage(Storage):
         # attempt to write to the '{system}/current.json' file to update the selected entrypoint
         try:
             with open(outfile, 'w') as f:
-                dat = {"name": name, "entrypoint": path,
+                dat = {"name": name, "entrypoint": path, "cmd": cmd,
                        "type": entrypoint_type, "systems": [system], "id": entrypoint_id}
                 json.dump(dat, f)
             return True

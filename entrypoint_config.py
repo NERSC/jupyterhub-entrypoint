@@ -20,18 +20,21 @@ c.EntrypointService.entrypoint_types = [
         'name': 'conda',
         'display_name': 'Conda',
         'mutable': True,
+        'cmd_template': '{path}/bin/jupyterlab-hub',
         'help_link': 'http://localhost:8000/services/entrypoint/'
     },
     {
         'name': 'script',
         'display_name': 'Startup Script',
         'mutable': True,
+        'cmd_template': '{path}',
         'help_link': 'http://localhost:8000/services/entrypoint/'
     },
     {
         'name': 'shifter',
         'display_name': 'Shifter Image',
         'mutable': False,
+        'cmd_template': 'shifter --image={path}',
         'help_link': 'http://localhost:8000/services/entrypoint/'
     }
 ]

@@ -106,8 +106,7 @@
                             data-target="#add-{{type}}-modal">
                             add
                         </button>
-                        <button type="button" onclick="deleteHandler('{{type}}')"
-                            class="row-button btn btn-jupyter">
+                        <button type="button" onclick="deleteHandler('{{type}}')" class="row-button btn btn-jupyter">
                             delete
                         </button>
                         {% endif %}
@@ -168,8 +167,7 @@
                             </div>
                             <!-- where to show messages if necessary -->
                             <div>
-                                <small id="{{type}}-error-msg"
-                                    class="form-text text-muted error note"></small>
+                                <small id="{{type}}-error-msg" class="form-text text-muted error note"></small>
                                 <small id="{{type}}-msg" class="form-text text-muted note"></small>
                             </div>
                         </div>
@@ -321,15 +319,24 @@
 {% set hostname = system['hostname'] %}
 {% set system=system['name'] %}
 
+<script>
+    let cmdTemplates = {};
+</script>
+
 <!-- Fetch available entrypoints from API endpoints -->
 {% for entrypoint_type in entrypoint_types %}
+
+<script>
+    cmdTemplates["{{entrypoint_type['name']}}"] = "{{entrypoint_type['cmd_template']}}";
+</script>
+
 {% set entrypoint_type = entrypoint_type['name'] %}
 <script type="text/javascript">
     $.get("/services/entrypoint/entrypoints/users/{{user.name}}/type/{{entrypoint_type}}?system={{system}}", function (data) {
         const list = data[Object.keys(data)[0]];
         let content = "";
         $.each(list, function (index, value) {
-            content += `<option value="${value["name"]}" name="${value["name"]}" id="${value["id"]}" data-path="${value["entrypoint"]}"> ${value["name"]} </option>\n`;
+            content += `<option value="${value["name"]}" name="${value["name"]}" id="${value["id"]}" data-path="${value["entrypoint"]}" data-cmd="${value["cmd"]}">${value["name"]} </option>\n`;
         });
 
         $("#{{entrypoint_type}}").append(content);
@@ -351,6 +358,11 @@
 {% endfor %}
 
 <script type="text/javascript">
+    function getCmd(entrypoint_type, path) {
+        console.log(entrypoint_type, path);
+        return cmdTemplates[entrypoint_type].replace('{path}', path).replace('//', '/');
+    }
+
     String.prototype.capitalize = function () {
         return this.charAt(0).toUpperCase() + this.slice(1);
     }
@@ -361,6 +373,7 @@
         let content = 'None';
         try {
             await $.get(`/services/entrypoint/users/{{user.name}}/systems/${system.toLowerCase()}`, function (data) {
+                console.log(data);
                 if (Object.keys(data).length !== 0) {
                     const type = data["{{user.name}}"]["type"];
                     let prefix = (type === "") ? "None" : type.capitalize() + ": ";
@@ -394,6 +407,9 @@
         const path = $(`#add-${entrypoint_type}-path`).val();
         const name = $(`#add-${entrypoint_type}-name`).val();
 
+        const cmd = getCmd(entrypoint_type, path);
+        console.log(cmd);
+
         const elems = document.getElementsByName(`tag-${entrypoint_type}-for-{{system}}`);
 
         let systems = ["{{system}}"];
@@ -415,7 +431,7 @@
         } else if (systems.length == 0) {
             result = { 'result': false, 'message': 'Error: No system selected' };
         } else {
-            result = await addEntrypoint(name, path, entrypoint_type, systems, hosts);
+            result = await addEntrypoint(name, path, cmd, entrypoint_type, systems, hosts);
         }
 
         if (!result.result) {
@@ -426,13 +442,14 @@
     }
 
     // POSTs a new entrypoint to the API endpoint
-    async function addEntrypoint(entrypoint_name, entrypoint_path, entrypoint_type, systems, hosts) {
+    async function addEntrypoint(entrypoint_name, entrypoint_path, cmd, entrypoint_type, systems, hosts) {
         const response = await $.ajax({
             method: "POST",
             url: "/services/entrypoint/users/{{user.name}}/systems/{{system}}",
             data: JSON.stringify({
                 "name": entrypoint_name,
                 "entrypoint": entrypoint_path,
+                "cmd": cmd,
                 "type": entrypoint_type,
                 "systems": systems,
                 "hosts": hosts,
@@ -452,7 +469,8 @@
             const elem = document.getElementsByName(name)[0];
             const id = elem.id;
             const path = elem.dataset.path;
-            result = await updateEntrypoint(id, entrypoint_type, name, path);
+            const cmd = elem.dataset.cmd;
+            result = await updateEntrypoint(id, entrypoint_type, name, path, cmd);
         } catch {
             result = { 'result': false, 'message': 'Error: failed to fetch. Did you select from the drop down list?' };
         }
@@ -466,13 +484,14 @@
     }
 
     // POSTs the selected environment to replace the current entrypoint
-    async function updateEntrypoint(id, entrypoint_type, name, path) {
+    async function updateEntrypoint(id, entrypoint_type, name, path, cmd) {
         const response = await $.ajax({
             method: "PUT",
             url: "/services/entrypoint/users/{{user.name}}/systems/{{system}}",
             data: JSON.stringify({
                 "name": name,
                 "entrypoint": path,
+                "cmd": cmd,
                 "id": id,
                 "type": entrypoint_type,
             }),
