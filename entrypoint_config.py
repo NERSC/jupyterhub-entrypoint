@@ -40,7 +40,7 @@ c.EntrypointService.entrypoint_types = [
 ]
 
 c.EntrypointService.additional_handlers = [
-    (r"users/(.+)/systems/(.+)/type/shifter", APIShifterImageHandler)
+    (r"users/(.+)/systems/(.+)/types/shifter", APIShifterImageHandler)
 ]
 
 c.APIBaseHandler.validator = SSHValidator()
