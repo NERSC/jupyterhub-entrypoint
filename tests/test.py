@@ -20,6 +20,10 @@ class Test():
             return set(wh_now).difference(set(wh_then)).pop()
     
     def test(self):
+        self.login()
+        
+
+    def login(self):
         # Open the browser
         self.driver.get('http://localhost:8000')
         self.driver.implicitly_wait(10)
