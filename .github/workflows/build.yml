@@ -45,6 +45,7 @@ jobs:
       - run: echo "c.EntrypointService.entrypoint_types = [{'name':'conda','display_name':'Conda','mutable':True,'cmd_template':'{path}/bin/jupyterlab-hub','help_link':''}]" >> entrypoint_config.py
 
       - run: cat jupyterhub_config.py
+      - run: cat entrypoint_config.py
       
       # Start jupyterhub and run pytests
       - run: jupyterhub &
