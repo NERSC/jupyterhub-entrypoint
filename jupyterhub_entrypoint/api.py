@@ -51,8 +51,7 @@ class APIHandler(web.RequestHandler, Application, Configurable):
         self.storage = self.settings['storage']
 
 
-# have to reinherit web.RequestHandler for some reason or it breaks
-class APIUserHandler(APIHandler, HubAuthenticated, web.RequestHandler):
+class APIUserHandler(HubAuthenticated, APIHandler):
     """Parent handler class that initializes env variables and handles user authentication"""
 
     # ensures the logged in user is authorized to view/edit settings

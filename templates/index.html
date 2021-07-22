@@ -332,7 +332,7 @@
 
 {% set entrypoint_type = entrypoint_type['name'] %}
 <script type="text/javascript">
-    $.get("/services/entrypoint/entrypoints/users/{{user.name}}/systems/{{system}}/type/{{entrypoint_type}}", function (data) {
+    $.get("/services/entrypoint/users/{{user.name}}/systems/{{system}}/types/{{entrypoint_type}}", function (data) {
         const list = data[Object.keys(data)[0]];
         let content = "";
         $.each(list, function (index, value) {

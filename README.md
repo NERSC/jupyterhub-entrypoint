@@ -34,7 +34,7 @@ service. Here's an example configuration for a hub-managed service you can place
         {
             'name': 'entrypoint',
             'url': 'http://127.0.0.1:8889',
-            'command': ["python", "-m", "jupyterhub_entrypoint"]
+            'command': ["python3", "-m", "jupyterhub_entrypoint"]
         }
     ]
 
