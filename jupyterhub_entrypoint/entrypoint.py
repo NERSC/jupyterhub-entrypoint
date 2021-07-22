@@ -178,14 +178,12 @@ class EntrypointService(Application, Configurable):
                           APIUserSelectionHandler, {"system": system['name']}),
 
                          (rf"validate/users/(.+)/systems/{system['name']}",
-                          APIUserValidationHandler, {"system": system['name'], "host": system['hostname']}),          
-                        ]
+                          APIUserValidationHandler, {"system": system['name'], "host": system['hostname']}),
+                         ]
 
-        # create an APIHubHandler for each system
-        for system in self.systems:
-            handlers += [(rf"hub/users/(.+)/systems/(.+))",
-                          APIHubHandler)]
-        
+        # create an APIHubHandler
+        handlers += [(rf"hub/users/(.+)/systems/(.+))",
+                      APIHubHandler)]
 
         # create an APIPathHandler for each entrypoint type set in the config file
         for entrypoint in self.entrypoint_types:
