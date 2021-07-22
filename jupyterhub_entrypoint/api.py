@@ -61,7 +61,7 @@ class APIUserHandler(HubAuthenticated, APIHandler):
             raise web.HTTPError(403)
 
 
-class APIHubHandler(APIHandler):
+class APIHubCurrentHandler(APIHandler):
     """
     Handler that is used to read current entrypoints from the hub with an auth token
 
@@ -79,22 +79,31 @@ class APIHubHandler(APIHandler):
         else:
             raise web.HTTPError(403)
 
+class APIHubTypeHandler(APIHandler):
+    async def get(self, user, system, entrypoint_type):
+        token = self.request.headers.get('Authorization')
+        if token == os.environ['ENTRYPOINT_AUTH_TOKEN']:
+            info = self.storage.read(user, entrypoint_type, system)
+            if info:
+                self.write(info)
+        else:
+            raise web.HTTPError(403)
+
 
 class APIPathHandler(APIUserHandler):
     """Handler used to fetch a user's available paths for a given entrypoint type for a given system"""
 
-    def initialize(self, entrypoint_type):
+    def initialize(self):
         super().initialize()
-        self.entrypoint_type = entrypoint_type
 
     # returns all entrypoints for the given type (conda, script, etc)
     # requires a system url parameter
     @web.authenticated
-    def get(self, user, system):
+    def get(self, user, system, entrypoint_type):
         self.verify_user(user)
 
         if system != '':
-            info = self.storage.read(user, self.entrypoint_type, system)
+            info = self.storage.read(user, entrypoint_type, system)
             if info:
                 self.write(info)
         else:
