@@ -182,7 +182,7 @@ class EntrypointService(Application, Configurable):
                          ]
 
         # create an APIHubHandler
-        handlers += [(rf"hub/users/(.+)/systems/(.+))",
+        handlers += [(rf"hub/users/(.+)/systems/(.+)",
                       APIHubHandler)]
 
         # create an APIPathHandler for each entrypoint type set in the config file
