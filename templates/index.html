@@ -347,6 +347,7 @@
 {% endfor %}
 
 <!-- Create click handlers to swap selected system -->
+{% if systems|length > 1 %}
 {% for system in systems %}
 <script type="text/javascript">
     document.getElementById("select-{{system['name']}}").addEventListener("click", function () {
@@ -356,6 +357,7 @@
     });
 </script>
 {% endfor %}
+{% endif %}
 
 <script type="text/javascript">
     String.prototype.capitalize = function () {

@@ -41,8 +41,8 @@ jobs:
       # Setup the config file
       - run: echo "c.JupyterHub.services=[{'name':'entrypoint','url':'http://127.0.0.1:8889','command':['python', '-m', 'jupyterhub_entrypoint'] }]" > jupyterhub_config.py
       - run: echo "c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'" >> jupyterhub_config.py
-      - run: echo "c.EntrypointService.systems=[{'name':'cori','display_name':'Cori','hostname':'cori'}]" >> jupyterhub_config.py
-      - run: echo "c.EntrypointService.entrypoint_types = [{'name':'conda','display_name':'Conda','mutable':True,'cmd_template':'{path}/bin/jupyterlab-hub','help_link':''}]" >> jupyterhub_config.py
+      - run: echo "c.EntrypointService.systems=[{'name':'cori','display_name':'Cori','hostname':'cori'}]" >> entrypoint_config.py
+      - run: echo "c.EntrypointService.entrypoint_types = [{'name':'conda','display_name':'Conda','mutable':True,'cmd_template':'{path}/bin/jupyterlab-hub','help_link':''}]" >> entrypoint_config.py
 
       - run: cat jupyterhub_config.py
       

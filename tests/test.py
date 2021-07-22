@@ -1,5 +1,7 @@
 import time
 from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
 
 class Test():
@@ -21,7 +23,14 @@ class Test():
     
     def test(self):
         self.login()
-        
+        self.check_titles()
+        self.add_entrypoint()
+        self.select_entrypoint()
+        self.clear_entrypoint()
+        self.delete_entrypoint()
+
+        time.sleep(10)
+
 
     def login(self):
         # Open the browser
@@ -32,8 +41,8 @@ class Test():
         username = self.driver.find_element_by_id('username_input')
         password = self.driver.find_element_by_id('password_input')
 
-        username.send_keys('admin')
-        password.send_keys('admin')
+        username.send_keys('test-user')
+        password.send_keys('test-user')
 
         login_button = self.driver.find_element_by_id('login_submit')
         login_button.click()
@@ -45,6 +54,61 @@ class Test():
         entrypoint_button = self.driver.find_elements_by_xpath("//*[contains(text(), 'entrypoint')]")[0]
         entrypoint_button.click()
 
+    def check_titles(self):
         # Make sure the page renders with the correct title
         title = self.driver.find_element_by_id('title')
         assert title.text == 'JupyterHub Entrypoint Service'
+
+        elem = self.driver.find_elements_by_xpath("//*[contains(text(), 'Manage Conda Entrypoints')]")
+        assert len(elem) == 1
+
+        elem = self.driver.find_elements_by_xpath("//*[contains(text(), 'Selected custom entrypoint for Cori')]")
+        assert len(elem) == 1
+    
+    def add_entrypoint(self):
+        elem = self.driver.find_element_by_xpath("//button[contains(text(), 'add')]")
+        elem.click()
+
+        path_input = self.driver.find_element_by_id('add-conda-path')
+        path_input.send_keys('/envs/my-env')
+
+        name_input = self.driver.find_element_by_id('add-conda-name')
+        name_input.send_keys('My Env')
+
+        elem = self.driver.find_element_by_xpath("//button[contains(text(), 'Add entrypoint')]")
+        elem.click()
+
+        # put in API calls to check it was added correctly
+    
+    def select_entrypoint(self):
+        elem = self.driver.find_element_by_id('conda')
+        elem.click()
+
+        elem = self.driver.find_element_by_xpath("//option[contains(text(), 'My Env')]")
+        elem.click()
+
+        elem = self.driver.find_element_by_xpath("//button[contains(text(), 'select')]")
+        elem.click()
+
+        # make an API call to test it was set correctly
+    
+    def clear_entrypoint(self):
+        elem = self.driver.find_element_by_xpath("//button[contains(text(), 'Clear current custom entrypoint')]")
+        elem.click()
+
+        # check that the entrypoint was cleared
+
+    def delete_entrypoint(self):
+        elem = self.driver.find_element_by_id('conda')
+        elem.click()
+
+        elem = self.driver.find_element_by_xpath("//option[contains(text(), 'My Env')]")
+        elem.click()
+
+        elem = self.driver.find_element_by_xpath("//button[contains(text(), 'delete')]")
+        elem.click()
+
+        WebDriverWait(self.driver, 10).until(EC.alert_is_present())
+        self.driver.switch_to.alert.accept()
+
+        # make an API call to test it was deleted correctly
