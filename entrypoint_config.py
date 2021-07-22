@@ -34,13 +34,13 @@ c.EntrypointService.entrypoint_types = [
         'name': 'shifter',
         'display_name': 'Shifter Image',
         'mutable': False,
-        'cmd_template': 'shifter --image={path} jupyterlab-hub',
+        'cmd_template': '', # formatting handled in image.py
         'help_link': 'http://localhost:8000/services/entrypoint/'
     }
 ]
 
 c.EntrypointService.additional_handlers = [
-    (r"entrypoints/users/(.+)/type/shifter", APIShifterImageHandler)
+    (r"users/(.+)/systems/(.+)/type/shifter", APIShifterImageHandler)
 ]
 
 c.APIBaseHandler.validator = SSHValidator()

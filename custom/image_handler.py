@@ -31,7 +31,7 @@ class ShifterImageHandler(HubAuthenticated, web.RequestHandler):
 
     # validate user and call self._get(), returns formated dict of {user: [list of images]}
     @web.authenticated
-    async def get(self, user):
+    async def get(self, user, *args):
         current_user = self.get_current_user()
         if current_user.get("admin", False) or current_user["name"] == user:
             images = await self._get(user)

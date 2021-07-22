@@ -189,7 +189,7 @@ class EntrypointService(Application, Configurable):
 
         # create an APIPathHandler for each entrypoint type set in the config file
         for entrypoint in self.entrypoint_types:
-            handlers += [(f"entrypoints/users/(.+)/type/{entrypoint['name']}",
+            handlers += [(f"users/(.+)/systems/(.+)/type/{entrypoint['name']}",
                           APIPathHandler, {"entrypoint_type": entrypoint['name']})]
 
         # append the service prefix to the front of each request handlers' API endpoint

@@ -91,10 +91,8 @@ class APIPathHandler(APIUserHandler):
     # returns all entrypoints for the given type (conda, script, etc)
     # requires a system url parameter
     @web.authenticated
-    def get(self, user):
+    def get(self, user, system):
         self.verify_user(user)
-
-        system = self.get_argument('system', '', True)
 
         if system != '':
             info = self.storage.read(user, self.entrypoint_type, system)
