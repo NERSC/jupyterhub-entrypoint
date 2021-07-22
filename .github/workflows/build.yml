@@ -24,6 +24,7 @@ jobs:
       - run: npm install
       - run: npm install -g configurable-http-proxy
       - run: python -m pip install -U jupyterhub jupyterlab jupyterhub-dummyauthenticator
+      - run: python -m pip install aiocache asyncssh
 
       # Install the extension and check that it installed correctly
       - run: pip install .
