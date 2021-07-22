@@ -183,8 +183,8 @@ class EntrypointService(Application, Configurable):
 
         # create an APIHubHandler for each system
         for system in self.systems:
-            handlers += [(rf"hub/users/(.+)/systems/{system['name']}",
-                          APIHubHandler, {"system": system['name']})]
+            handlers += [(rf"hub/users/(.+)/systems/(.+))",
+                          APIHubHandler)]
         
 
         # create an APIPathHandler for each entrypoint type set in the config file

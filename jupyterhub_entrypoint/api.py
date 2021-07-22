@@ -68,10 +68,10 @@ class APIHubHandler(APIHandler):
     Intended for use in the pre-hook spawn function
     """
 
-    async def get(self, user):
+    async def get(self, user, system):
         token = self.request.headers.get('Authorization')
         if token == os.environ['ENTRYPOINT_AUTH_TOKEN']:
-            info = self.storage.read(user, self.system, self.system)
+            info = self.storage.read(user, system, system)
             if info:
                 self.write(info)
             else:
