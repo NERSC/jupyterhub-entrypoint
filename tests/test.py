@@ -1,3 +1,4 @@
+import os
 import time
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -55,7 +56,7 @@ class Test():
         entrypoint_button.click()
 
     def check_titles(self):
-        # Make sure the page renders with the correct title
+        # Make sure the page renders with the correct titles
         title = self.driver.find_element_by_id('title')
         assert title.text == 'JupyterHub Entrypoint Service'
 
@@ -68,8 +69,7 @@ class Test():
         assert len(elem) == 1
 
     def add_entrypoint(self):
-        elem = self.driver.find_element_by_xpath(
-            "//button[contains(text(), 'add')]")
+        elem = self.driver.find_element_by_id('add-conda-button')
         elem.click()
 
         path_input = self.driver.find_element_by_id('add-conda-path')
@@ -92,18 +92,20 @@ class Test():
             "//option[contains(text(), 'My Env')]")
         elem.click()
 
-        elem = self.driver.find_element_by_xpath(
-            "//button[contains(text(), 'select')]")
+        elem = self.driver.find_element_by_id('select-conda-button')
         elem.click()
 
         # make an API call to test it was set correctly
+        elem = self.driver.find_element_by_id('current-entrypoint')
+        assert 'Conda: My Env' in elem.text
 
     def clear_entrypoint(self):
-        elem = self.driver.find_element_by_xpath(
-            "//button[contains(text(), 'Clear current custom entrypoint')]")
+        elem = self.driver.find_element_by_id('clear-selection-button')
         elem.click()
 
         # check that the entrypoint was cleared
+        elem = self.driver.find_element_by_id('current-entrypoint')
+        assert elem.text == 'None'
 
     def delete_entrypoint(self):
         elem = self.driver.find_element_by_id('conda')

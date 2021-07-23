@@ -71,7 +71,7 @@
                     <dd id="current-entrypoint">None</dd>
                 </div>
                 <form id="clear-selection">
-                    <button type="submit" class="btn btn-jupyter clear-button">
+                    <button id="clear-selection-button" type="submit" class="btn btn-jupyter clear-button">
                         Clear current custom entrypoint
                     </button>
                 </form>
@@ -99,14 +99,14 @@
 
                     <!-- create select, delete, and add buttons -->
                     <span class="input-group-btn">
-                        <button type="button" onclick="selectHandler('{{type}}')"
+                        <button id="select-{{type}}-button" type="button" onclick="selectHandler('{{type}}')"
                             class="row-button btn btn-jupyter">select</button>
                         {% if show_add_box %}
-                        <button type="button" class="row-button btn btn-jupyter" data-toggle="modal"
+                        <button id="add-{{type}}-button" type="button" class="row-button btn btn-jupyter" data-toggle="modal"
                             data-target="#add-{{type}}-modal">
                             add
                         </button>
-                        <button type="button" onclick="deleteHandler('{{type}}')" class="row-button btn btn-jupyter">
+                        <button id="delete-{{type}}-button" type="button" onclick="deleteHandler('{{type}}')" class="row-button btn btn-jupyter">
                             delete
                         </button>
                         {% endif %}
