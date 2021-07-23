@@ -34,7 +34,7 @@ service. Here's an example configuration for a hub-managed service you can place
         {
             'name': 'entrypoint',
             'url': 'http://127.0.0.1:8889',
-            'command': ["python", "-m", "jupyterhub_entrypoint"]
+            'command': ["python3", "-m", "jupyterhub_entrypoint"]
         }
     ]
 
@@ -157,12 +157,17 @@ the service starts:
 > /services/entrypoint/users/{user}/systems/{system} <br /> 
 Main endpoint used to access and modify the profile for a given user <br />
 > - GET Returns the current selected entrypoint for a given system for a given user <br /> 
-> - POST Can add a new entrypoint or update the current selected entrypoint <br /> 
+> - POST Adds a new available entrypoint <br /> 
+> - PUT Update the current selected entrypoint for a user
 > - DELETE Can clear the current selected entrypoint or remove an entrypoint option
+
+> /services/entrypoint/hub/users/{user}/systems/{system}
+> - GET Returns the current selected entrypoint for a given system for a given user, intended for use by the Hub in the pre-spawn hook
+> - Requires header {'Authorization': `ENTRYPOINT_AUTH_TOKEN`}
 
 > /services/entrypoint/validate/users/{user}/systems/{system} <br /> 
 Endpoint used to re-validate the given's user's selected entrypoint for a given system <br /> 
 > - GET Returns a json object {result: bool, message: str} of whether the endpoint was validated and any error messaging.
 
-> /services/entrypoint/entrypoints/users/{user}/type/{type}?system={system} <br /> 
-> - GET Returns all available entrypoints of a given type for a given user and system
+> /services/entrypoint/users/{user}/systems/{system}/type/{type} <br /> 
+> - GET Returns all available entrypoints of a given type for a given user and system (i.e. all conda environments on Cori for admin user)

@@ -18,7 +18,7 @@ from jupyterhub.utils import url_path_join
 from jupyterhub._data import DATA_FILES_PATH
 from jupyterhub.handlers.static import LogoHandler
 
-from .api import APIHubHandler, APIPathHandler, APIUserSelectionHandler, APIUserValidationHandler
+from .api import APIHubCurrentHandler, APIHubTypeHandler, APIPathHandler, APIUserSelectionHandler, APIUserValidationHandler
 from .ssl_context import SSLContext
 from .view import ViewHandler
 from .storage import FileStorage
@@ -178,19 +178,16 @@ class EntrypointService(Application, Configurable):
                           APIUserSelectionHandler, {"system": system['name']}),
 
                          (rf"validate/users/(.+)/systems/{system['name']}",
-                          APIUserValidationHandler, {"system": system['name'], "host": system['hostname']}),          
-                        ]
+                          APIUserValidationHandler, {"system": system['name'], "host": system['hostname']}),
+                         ]
 
-        # create an APIHubHandler for each system
-        for system in self.systems:
-            handlers += [(rf"hub/users/(.+)/systems/{system['name']}",
-                          APIHubHandler, {"system": system['name']})]
-        
+        # create an APIHubHandler
+        handlers += [(rf"hub/users/(.+)/systems/(.+)", APIHubCurrentHandler),
+                     (rf"hub/users/(.+)/systems/(.+)/types/(.+)", APIHubTypeHandler)]
 
         # create an APIPathHandler for each entrypoint type set in the config file
         for entrypoint in self.entrypoint_types:
-            handlers += [(f"entrypoints/users/(.+)/type/{entrypoint['name']}",
-                          APIPathHandler, {"entrypoint_type": entrypoint['name']})]
+            handlers += [(rf"users/(.+)/systems/(.+)/types/(.+)", APIPathHandler)]
 
         # append the service prefix to the front of each request handlers' API endpoint
         # e.g. users/{user}/systems/{system} => services/entrypoint/users/{user}/systems/{system}

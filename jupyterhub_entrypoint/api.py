@@ -19,13 +19,11 @@ class BaseValidator:
         self.log = logging.getLogger(__name__)
 
     async def validate(self, user, path, entrypoint_type, host):
-        self.log.warning('No validator set in entrypoint_config.py', UserWarning)
+        self.log.warning('No validator set in entrypoint_config.py')
         return True, 'Warning: No validator set in entrypoint_config.py'
 
 
-class APIBaseHandler(HubAuthenticated, web.RequestHandler, Application, Configurable):
-    """Parent handler class that initializes env variables and handles user authentication"""
-
+class APIHandler(web.RequestHandler, Application, Configurable):
     config_file = Unicode(
         "entrypoint_config.py",
         help="Config file to load"
@@ -52,41 +50,28 @@ class APIBaseHandler(HubAuthenticated, web.RequestHandler, Application, Configur
         # retrieve storage object from the EntrypointService app settings
         self.storage = self.settings['storage']
 
+
+class APIUserHandler(HubAuthenticated, APIHandler):
+    """Parent handler class that initializes env variables and handles user authentication"""
+
     # ensures the logged in user is authorized to view/edit settings
     def verify_user(self, user):
         current_user = self.get_current_user()
         if not current_user.get('admin', False) and current_user['name'] != user:
             raise web.HTTPError(403)
 
-class APIHubHandler(web.RequestHandler, Application, Configurable):
+
+class APIHubCurrentHandler(APIHandler):
     """
     Handler that is used to read current entrypoints from the hub with an auth token
-    
+
     Intended for use in the pre-hook spawn function
     """
 
-
-    config_file = Unicode(
-        "entrypoint_config.py",
-        help="Config file to load"
-    ).tag(config=True)
-    
-    def initialize(self, system):
-        super().initialize()
-        logging.basicConfig(level=logging.INFO)
-        self.log = logging.getLogger(__name__)
-        self.system = system
-
-        if self.config_file:
-            self.load_config_file(self.config_file)
-        
-        self.storage = self.settings['storage']
-        
-    
-    async def get(self, user):
+    async def get(self, user, system):
         token = self.request.headers.get('Authorization')
         if token == os.environ['ENTRYPOINT_AUTH_TOKEN']:
-            info = self.storage.read(user, self.system, self.system)
+            info = self.storage.read(user, system, system)
             if info:
                 self.write(info)
             else:
@@ -94,24 +79,31 @@ class APIHubHandler(web.RequestHandler, Application, Configurable):
         else:
             raise web.HTTPError(403)
 
+class APIHubTypeHandler(APIHandler):
+    async def get(self, user, system, entrypoint_type):
+        token = self.request.headers.get('Authorization')
+        if token == os.environ['ENTRYPOINT_AUTH_TOKEN']:
+            info = self.storage.read(user, entrypoint_type, system)
+            if info:
+                self.write(info)
+        else:
+            raise web.HTTPError(403)
 
-class APIPathHandler(APIBaseHandler):
+
+class APIPathHandler(APIUserHandler):
     """Handler used to fetch a user's available paths for a given entrypoint type for a given system"""
 
-    def initialize(self, entrypoint_type):
+    def initialize(self):
         super().initialize()
-        self.entrypoint_type = entrypoint_type
 
     # returns all entrypoints for the given type (conda, script, etc)
     # requires a system url parameter
     @web.authenticated
-    def get(self, user):
+    def get(self, user, system, entrypoint_type):
         self.verify_user(user)
 
-        system = self.get_argument('system', '', True)
-
         if system != '':
-            info = self.storage.read(user, self.entrypoint_type, system)
+            info = self.storage.read(user, entrypoint_type, system)
             if info:
                 self.write(info)
         else:
@@ -119,7 +111,7 @@ class APIPathHandler(APIBaseHandler):
             raise Exception('APIError: system parameter not specified')
 
 
-class APIUserValidationHandler(APIBaseHandler):
+class APIUserValidationHandler(APIUserHandler):
     """Handler used to validate a user's current selected entrypoint"""
 
     # initializes with the system name (i.e. 'cori') and the system's hostname (i.e. 'cori.nersc.gov')
@@ -136,8 +128,8 @@ class APIUserValidationHandler(APIBaseHandler):
         # get the current selected entrypoint for the user for the given system from storage
         info = self.storage.read(user, self.system, self.system)
         if info:
-            path = info[user][0]['entrypoint']
-            entrypoint_type = info[user][0]['type']
+            path = info[user]['entrypoint']
+            entrypoint_type = info[user]['type']
 
             # validate using the validator set in entrypoint_config.py
             result, message = await self.validator.validate(user, path, entrypoint_type, self.host)
@@ -147,7 +139,7 @@ class APIUserValidationHandler(APIBaseHandler):
                 {'result': False, 'message': f'Error: No entrypoint set for {user} on {self.system}'})
 
 
-class APIUserSelectionHandler(APIBaseHandler):
+class APIUserSelectionHandler(APIUserHandler):
     """Handles the users current selected entrypoint for a given system"""
 
     def initialize(self, system):
@@ -192,6 +184,7 @@ class APIUserSelectionHandler(APIBaseHandler):
         name = doc["name"]
         path = doc["entrypoint"]
         entrypoint_type = doc["type"]
+        cmd = doc["cmd"]
         systems = doc["systems"]
         hosts = doc["hosts"]
 
@@ -200,7 +193,7 @@ class APIUserSelectionHandler(APIBaseHandler):
 
         if result is True:
             self.log.info('Validation successful')
-            self.storage.create(user,  name, path,
+            self.storage.create(user, name, path, cmd,
                                 entrypoint_type, systems)
             self.write(
                 {'result': True, 'message': 'Path successfully added'})
@@ -212,12 +205,13 @@ class APIUserSelectionHandler(APIBaseHandler):
     async def put(self, user):
         doc = escape.json_decode(self.request.body)
         self.log.info(f'Doc: {doc}')
-        
+
         entrypoint_id = doc["id"]
         entrypoint_type = doc["type"]
         path = doc["entrypoint"]
+        cmd = doc["cmd"]
         name = doc["name"]
-        result = self.storage.update(user, name, path, entrypoint_id,
+        result = self.storage.update(user, name, path, cmd, entrypoint_id,
                                      entrypoint_type, self.system)
         self.log.info('Finished selecting')
 
