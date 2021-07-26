@@ -20,7 +20,7 @@ c.EntrypointService.entrypoint_types = [
         'name': 'conda',
         'display_name': 'Conda',
         'mutable': True,
-        'cmd_template': '{path}/bin/jupyterlab-hub',
+        'cmd_template': '{path}/bin/jupyter-labhub',
         'help_link': 'http://localhost:8000/services/entrypoint/'
     },
     {
