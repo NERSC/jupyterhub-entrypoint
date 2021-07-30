@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import registry, relationship, selectinload, sessionmaker
 
+get_type = type
 
 mapper_registry = registry()
 Base = mapper_registry.generate_base()
@@ -17,11 +18,10 @@ entrypoints_and_tags = Table(
     Column('tag_id', ForeignKey('tags.id'), primary_key=True)
 )
 
-selection_association = Table(
+selections_and_tags = Table(
     'selections_association',
     Base.metadata,
     Column('selection_id', ForeignKey('selections.id'), primary_key=True),
-    Column('entrypoint_id', ForeignKey('entrypoints.id'), primary_key=True),
     Column('tag_id', ForeignKey('tags.id'), primary_key=True)
 )
 
@@ -58,6 +58,12 @@ class Tag(Base):
         back_populates="tags"
     )
 
+    selections = relationship(
+        "Selection",
+        secondary=selections_and_tags,
+        back_populates="tags"
+    )
+
     def __repr__(self):
         return f'Tag(name={self.name})'
 
@@ -67,8 +73,13 @@ class Selection(Base):
 
     id = Column(Text, primary_key=True)
     user = Column(Text, nullable=False)
-
     entrypoint_id = Column(Text, ForeignKey('entrypoints.id'), nullable=False)
+
+    tags = relationship(
+        "Tag",
+        secondary=selections_and_tags,
+        back_populates="selections"
+    )
 
     def __repr__(self):
         return f'Selection(user={self.user}, entrypoint_id={self.entrypoint_id})'
@@ -86,8 +97,10 @@ async def find_entrypoint(engine, id=-1, user='', name='', type='', tags=[]):
             statement = select(Entrypoint).join(Entrypoint.tags).options(
                 selectinload(Entrypoint.tags))
 
-            for tag in tags:
-                statement = statement.filter(Tag.name == tag)
+            if tags != []:
+                statement = statement.filter(
+                    Entrypoint.tags.any(Tag.name.in_(tags))
+                )
 
             if id != -1:
                 statement = statement.filter(Entrypoint.id == id)
@@ -101,7 +114,7 @@ async def find_entrypoint(engine, id=-1, user='', name='', type='', tags=[]):
             if type != '':
                 statement = statement.filter(Entrypoint.type == type)
 
-            res = await session.execute(statement)
+            res = await session.execute(statement.distinct())
             return [r.Entrypoint for r in res.all()]
 
 
@@ -113,11 +126,10 @@ async def create_entrypoint(engine, user='', name='', type='', data={}, tags=[])
     async_session = sessionmaker(
         engine, expire_on_commit=False, class_=AsyncSession
     )
-
+    
     async with async_session() as session:
         async with session.begin():
-            entrypoint = Entrypoint(id=str(uuid4()), user=user, name=name, type=type, data=data, tags=[
-                                    Tag(name=tag, id=str(uuid4())) for tag in tags])
+            entrypoint = Entrypoint(id=str(uuid4()), user=user, name=name, type=type, data=data, tags=tags)
             session.add(entrypoint)
 
 
@@ -187,6 +199,22 @@ async def get_selection(engine, user=''):
             return res[0].Selection
 
 
+async def create_tag(engine, name):
+    async_session = sessionmaker(
+        engine, expire_on_commit=False, class_=AsyncSession
+    )
+
+    async with async_session() as session:
+        async with session.begin():
+            statement = select(Tag).filter(Tag.name == name)
+            res = await session.execute(statement)
+
+            res = res.all()
+            if (len(res) == 0):
+                return Tag(name=name, id=str(uuid4()))
+            return res[0].Tag
+
+
 async def main():
     # engine = create_async_engine("sqlite+aiosqlite:///memory")  # database.db")
     engine = create_async_engine(
@@ -196,11 +224,11 @@ async def main():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
-    await create_entrypoint(engine, user='jgeden', name='conda1', type='conda', data={}, tags=['cori'])
-    await create_entrypoint(engine, user='jgeden', name='dask:latest', type='shifter', tags=['cori, perlmutter'])
-    await create_entrypoint(engine, user='rcthomas', name='conda1', type='conda', data={}, tags=['cori'])
-    await create_entrypoint(engine, user='rcthomas', name='script1', type='script', data={}, tags=['cori'])
-    await create_entrypoint(engine, user='rcthomas', name='conda2', type='conda', tags=['perlmutter'])
+    await create_entrypoint(engine, user='jgeden', name='conda1', type='conda', data={}, tags=[await create_tag(engine, 'cori')])
+    await create_entrypoint(engine, user='jgeden', name='dask:latest', type='shifter', tags=[await create_tag(engine, 'cori'), await create_tag(engine, 'perlmutter')])
+    await create_entrypoint(engine, user='rcthomas', name='conda1', type='conda', data={}, tags=[await create_tag(engine, 'cori')])
+    await create_entrypoint(engine, user='rcthomas', name='script1', type='script', data={}, tags=[await create_tag(engine, 'cori')])
+    await create_entrypoint(engine, user='rcthomas', name='conda2', type='conda', tags=[await create_tag(engine, 'perlmutter')])
 
     print('\nGetting *')
     res = await find_entrypoint(engine)
@@ -212,21 +240,22 @@ async def main():
     for e in res:
         print('*', e)
 
-    print('\nGetting tag=cori')
-    res = await find_entrypoint(engine, tags=['cori'])
+    print('\nGetting tag=perlmutter')
+    res = await find_entrypoint(engine, tags=['perlmutter'])
     for e in res:
         print('*', e)
 
+    print('\nGetting name=conda1')
     res = await find_entrypoint(engine, name='conda1')
     for e in res:
         print('*', e)
 
     print()
 
-    print('Removing conda1 for jgeden')
+    print('Removing name=conda1 for user=jgeden')
     await delete_entrypoint(engine, user='jgeden', name='conda1')
 
-    print('Get conda1 for all users')
+    print('Getting name=conda1')
     res = await find_entrypoint(engine, name='conda1')
     for e in res:
         print('*', e)
