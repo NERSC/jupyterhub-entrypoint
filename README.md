@@ -171,3 +171,12 @@ Endpoint used to re-validate the given's user's selected entrypoint for a given 
 
 > /services/entrypoint/users/{user}/systems/{system}/type/{type} <br /> 
 > - GET Returns all available entrypoints of a given type for a given user and system (i.e. all conda environments on Cori for admin user)
+
+## Example
+
+The `example` directory contains a Docker-based example. To build and run:
+
+    docker build -t jupyterhub-entrypoint:example -f example/Dockerfile .
+    docker run -it --rm -p 8000:8000 jupyterhub-entrypoint:example 
+
+Then point your web browser at http://localhost:8000/, log in as user1:user1, select services -> entrypoint and see how it behaves
