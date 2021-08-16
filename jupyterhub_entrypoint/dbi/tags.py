@@ -55,7 +55,7 @@ async def delete_tag(conn, tag_name):
         tag_name    (str): Meaningful category label
 
     Raises:
-        ValueError: If `tag_name` does not exist.
+        ValueError: If no tag named `tag_name` is found.
 
     """
 
