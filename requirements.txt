@@ -1,5 +1,6 @@
 jupyterhub
 aiocache
+aiosqlite
 asyncssh
 jinja2
 tornado
