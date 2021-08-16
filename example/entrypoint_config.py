@@ -1,52 +1,64 @@
-from custom.image_handler import APIShifterImageHandler
-from custom.validate import SSHValidator
+# from custom.image_handler import APIShifterImageHandler
+# from custom.validate import SSHValidator
 
 
-c.EntrypointService.systems = [
-    {
-        'name': 'cori',
-        'display_name': 'Cori',
-        'hostname': 'cori'
-    },
-    {
-        'name': 'perlmutter',
-        'display_name': 'Perlmutter',
-        'hostname': 'perlmutter'
-    }
-]
+c.EntrypointService.tags = [{
+    "tag_name": "cori",
+    "display_name": "Cori",
+}, {
+    "tag_name": "perlmutter",
+    "display_name": "Perlmutter",
+}]
 
-c.EntrypointService.entrypoint_types = [
-    {
-        'name': 'conda',
-        'display_name': 'Conda',
-        'mutable': True,
-        'cmd_template': '{path}/bin/jupyter-labhub',
-        'help_link': 'http://localhost:8000/services/entrypoint/'
-    },
-    {
-        'name': 'script',
-        'display_name': 'Startup Script',
-        'mutable': True,
-        'cmd_template': '{path}',
-        'help_link': 'http://localhost:8000/services/entrypoint/'
-    },
-    {
-        'name': 'shifter',
-        'display_name': 'Shifter Image',
-        'mutable': False,
-        'cmd_template': '', # formatting handled in image.py
-        'help_link': 'http://localhost:8000/services/entrypoint/'
-    }
-]
+c.EntrypointService.types = [(
+    "jupyterhub_entrypoint.types.TrustedScriptEntrypointType",
+    ("/usr/local/bin/example-entrypoint.sh",),
+), (
+    "jupyterhub_entrypoint.types.ShifterEntrypointType",
+    ("http://127.0.0.1:8890/services/images/", "blah")
+)]
+    
 
-c.EntrypointService.additional_handlers = [
-    (r"users/(.+)/systems/(.+)/types/shifter", APIShifterImageHandler)
-]
+# c.EntrypointService.entrypoint_types = [{
+#     'name': 'conda',
+#     'display_name': 'Conda',
+#     'cmd_template': '{path}/bin/jupyter-labhub',
+#     'help_link': 'http://localhost:8000/services/entrypoint/'
+# }, {
+#     'name': 'script',
+#     'display_name': 'Startup Script',
+#     'cmd_template': '{path}',
+#     'help_link': 'http://localhost:8000/services/entrypoint/'
+# }, {
+#     'name': 'shifter',
+#     'display_name': 'Shifter Image',
+#     'cmd_template': '', # formatting handled in image.py
+#     'help_link': 'http://localhost:8000/services/entrypoint/'
+# }]
 
-c.APIBaseHandler.validator = SSHValidator()
 
-c.EntrypointService.template_paths = [
-    '/Users/josh/miniconda3/envs/test-hub/share/jupyterhub/entrypoint/templates']
+# c.EntrypointService.systems = [
+#     {
+#         'name': 'cori',
+#         'display_name': 'Cori',
+#         'hostname': 'cori'
+#     },
+#     {
+#         'name': 'perlmutter',
+#         'display_name': 'Perlmutter',
+#         'hostname': 'perlmutter'
+#     }
+# ]
+
+# 
+# c.EntrypointService.additional_handlers = [
+#     (r"users/(.+)/systems/(.+)/types/shifter", APIShifterImageHandler)
+# ]
+# 
+# c.APIBaseHandler.validator = SSHValidator()
+# 
+# c.EntrypointService.template_paths = [
+#     '/Users/josh/miniconda3/envs/test-hub/share/jupyterhub/entrypoint/templates']
 
 
 # Configuration file for application.
