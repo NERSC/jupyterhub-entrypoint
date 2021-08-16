@@ -5,13 +5,14 @@
 # It also sets up all request handlers with their API endpoint
 #########################################################################
 
+import asyncio
 import os
 import sys
 import logging
 from tornado import ioloop, web
 from jinja2 import FileSystemLoader
 
-from traitlets import Bool, Dict, Integer, List, Unicode, default
+from traitlets import Bool, Dict, Instance, Integer, List, Tuple, Type, Unicode, default, observe
 from traitlets.config import Application, Configurable
 
 from jupyterhub.utils import url_path_join
@@ -20,8 +21,39 @@ from jupyterhub.handlers.static import LogoHandler
 
 from .api import APIHubCurrentHandler, APIHubTypeHandler, APIPathHandler, APIUserSelectionHandler, APIUserValidationHandler
 from .ssl_context import SSLContext
-from .view import ViewHandler
-from .storage import FileStorage
+from .handlers import ViewHandler, EntrypointHandler, SelectionHandler, HubSelectionHandler
+from .types import EntrypointType
+# from .storage import FileStorage
+
+from jupyterhub_entrypoint import dbi
+
+
+async def populate(conn):
+    tag_names = ["cori", "perlmutter"]
+    users = ["admin", "user1"]
+    entrypoint_names=["hello", "world", "happy", "chicken"]
+    entrypoint_types=["conda", "script", "shifter", "other"]
+    await _populate(conn, tag_names, users, entrypoint_names, entrypoint_types)
+
+
+async def _populate(conn, tag_names, users, entrypoint_names, entrypoint_types):
+    entrypoint_args = list()
+    count = 0
+    divisor = len(tag_names) + 1
+    for u in users:
+        for n in entrypoint_names:
+            for t in entrypoint_types:
+                data = dict(
+                    user=u,
+                    entrypoint_name=f"{n}-{t}",
+                    entrypoint_type=t,
+                    other="/a/b/c/d"
+                )
+                arg = (u, f"{n}-{t}", t, data, tag_names[:count%divisor])
+                entrypoint_args.append(arg)
+                count += 1
+    for args in entrypoint_args:
+        await dbi.create_entrypoint(conn, *args)
 
 
 class EntrypointService(Application, Configurable):
@@ -39,11 +71,11 @@ class EntrypointService(Application, Configurable):
         help="Generate default config file"
     ).tag(config=True)
 
-    # The following variables are configurable traitlet variables
-    additional_handlers = List(
-        [],
-        help="A list of additional request handlers"
-    ).tag(config=True)
+#   # The following variables are configurable traitlet variables
+#   additional_handlers = List(
+#       [],
+#       help="A list of additional request handlers"
+#   ).tag(config=True)
 
     config_file = Unicode(
         "entrypoint_config.py",
@@ -55,25 +87,40 @@ class EntrypointService(Application, Configurable):
         help="Location of JupyterHub data files"
     )
 
+    default_tag_name = Unicode(
+        help="Name of default tag, if unset, uses the first tag defined"
+    ).tag(config=True)
+
+    @default("default_tag_name")
+    def _default_tag_name(self):
+        return self.tags[0]["tag_name"]
+    
     entrypoint_api_token = Unicode(
         os.environ.get("JUPYTERHUB_API_TOKEN"),
         help="Secret token to access JupyterHub as an API"
     ).tag(config=True)
 
     entrypoint_types = List(
-        [],
-        help="A list of dicts: (name: str, display_name: str, mutable: bool)"
-    ).tag(config=True)
+        Instance(EntrypointType),
+        help="TBD"
+    )
 
-    file_storage_template_path = Unicode(
-        "{user[0]}/{user}/{type}/{uuid}.json",
-        help="Path for where file storage object saves files"
-    ).tag(config=True)
+#   file_storage_template_path = Unicode(
+#       "{user[0]}/{user}/{type}/{uuid}.json",
+#       help="Path for where file storage object saves files"
+#   ).tag(config=True)
 
     logo_file = Unicode(
         "",
         help="Logo path, can be used to override JupyterHub one",
     ).tag(config=True)
+
+    # set the default value for the logo file
+    @default("logo_file")
+    def _logo_file_default(self):
+        return os.path.join(
+            self.data_files_path, "static", "images", "jupyterhub-80.png"
+        )
 
     port = Integer(
         8889,
@@ -86,31 +133,39 @@ class EntrypointService(Application, Configurable):
         help="Entrypoint service prefix"
     ).tag(config=True)
 
-    storage_path = Unicode(
-        os.environ.get("STORAGE_PATH", "./data"),
-        help="Location for file storage"
-    ).tag(config=True)
+#   storage_path = Unicode(
+#       os.environ.get("STORAGE_PATH", "./data"),
+#       help="Location for file storage"
+#   ).tag(config=True)
 
-    systems = List(
-        [],
-        help="A list of available systems"
+#   systems = List(
+#       [],
+#       help="A list of available systems"
+#   ).tag(config=True)
+
+    tags = List(
+        [], #Dict,
+        help="List of tags"
     ).tag(config=True)
 
     template_paths = List(
         help="Search paths for jinja templates, coming before default ones"
     ).tag(config=True)
 
-    tornado_logs = Bool(
-        False,
-        help="Determines whether tornado.access logs be included in stdout"
+    types = List(
+        Tuple(Type(), Tuple()),
+        help="TBD"
     ).tag(config=True)
 
-    # set the default value for the logo file
-    @default("logo_file")
-    def _logo_file_default(self):
-        return os.path.join(
-            self.data_files_path, "static", "images", "jupyterhub-80.png"
-        )
+    @observe("types")
+    def _observe_types(self, change):
+        new = change["new"]
+        new_entrypoint_types = list()
+        for spec in new:
+            cls, args = spec
+            entrypoint_type = cls(*args)
+            new_entrypoint_types.append(entrypoint_type)
+        self.entrypoint_types = new_entrypoint_types
 
     # set the default value for the path to the templates folder
     @default("template_paths")
@@ -118,6 +173,12 @@ class EntrypointService(Application, Configurable):
         return ["templates",
                 os.path.join(self.data_files_path, "templates"),
                 os.path.join(self.data_files_path, "entrypoint", "templates")]
+
+    tornado_logs = Bool(
+        False,
+        help="Determines whether tornado.access logs be included in stdout"
+    ).tag(config=True)
+
 
     # initialize the web app by loading the config file, loading the template,
     # and setting the request handlers
@@ -150,56 +211,149 @@ class EntrypointService(Application, Configurable):
         # create a jinja loader to get the necessary html templates
         loader = FileSystemLoader(self.template_paths)
 
+        # create SQLAlchemy engine and optionally initialize database FIXME parameterize
+        engine = dbi.async_engine(
+            f"sqlite+aiosqlite:///:memory:",
+#           echo=True,
+            future=True
+        )
+
+        # for now we always initialize the database for testing... FIXME
+
+        async def init_db(engine):
+            async with engine.begin() as conn:
+                await dbi.init_db(conn)
+
+            async with engine.begin() as conn:
+                for tag in self.tags:
+                    await dbi.create_tag(conn, tag["tag_name"])
+
+            async with engine.begin() as conn:
+                await populate(conn)
+            
+
+        loop = asyncio.get_event_loop()
+        coroutine = init_db(engine)
+        loop.run_until_complete(coroutine)
+
         # create a dict of settings to pass on to the request handlers
         self.settings = {
             "service_prefix": self.service_prefix,
             "entrypoint_api_token": self.entrypoint_api_token,
             "static_path": os.path.join(self.data_files_path, "static"),
             "static_url_prefix": url_path_join(self.service_prefix, "static/"),
-            "storage": FileStorage(os.path.join(self.storage_path, self.file_storage_template_path))
+#           "storage": FileStorage(os.path.join(self.storage_path, self.file_storage_template_path))
+            "engine": engine,
+            "tags": self.tags,
         }
 
-        # create the default list of handlers (to show the html template, load static assets, and load the logo)
-        handlers = [
-            ('', ViewHandler, {"loader": loader, "systems": self.systems,
-             "entrypoint_types": self.entrypoint_types}),
-            (r"static/(.*)", web.StaticFileHandler,
+        # create handlers
+
+        handlers = list()
+
+        # if there are no tags just register the notag handler
+
+        for tag in self.tags:
+            handler = (
+                self.service_prefix + tag["tag_name"], 
+                ViewHandler,
+                dict(
+                    tag=tag,
+                    entrypoint_types=self.entrypoint_types,
+                    loader=loader
+                )
+            )
+            handlers.append(handler)
+
+        # redirect to default tag
+
+        handler = (
+            self.service_prefix,
+            web.RedirectHandler,
+            dict(url=self.service_prefix + self.default_tag_name)
+        )
+        handlers.append(handler)
+
+        # Entrypoint API handler
+
+        handler = (
+            self.service_prefix + "api/mgmt/users/(.+)/entrypoints/(.*)",
+            EntrypointHandler
+        )
+        handlers.append(handler)
+
+        # Selection API handler
+
+        handler = (
+            self.service_prefix + "api/mgmt/users/(.+)/selections/(.+)/tags/(.+)",
+            SelectionHandler
+        )
+        handlers.append(handler)
+
+        # Hub's selection handler
+
+        handler = (
+            self.service_prefix + "api/hub/users/(.+)/selections/(.+)",
+            HubSelectionHandler,
+            dict(
+                entrypoint_types=self.entrypoint_types,
+            )
+        )
+        handlers.append(handler)
+
+        handlers += [
+#           (self.service_prefix + r"(.*)", ViewHandler, {"loader": loader}),
+#           (r"(.*)", ViewHandler, {"loader": loader, "systems": self.systems,
+#            "entrypoint_types": self.entrypoint_types}),
+            (self.service_prefix + r"static/(.*)", web.StaticFileHandler,
              {"path": self.settings["static_path"]}),
-            (r"logo",
+            (self.service_prefix + r"logo",
              LogoHandler, {"path": self.logo_file})
         ]
 
-        # add any handlers set in the config file to the list of handlers
-        handlers += self.additional_handlers
 
-        # create an APIUserSelectionHandler and APIUserValidationHandler for each system set in the config file
-        for system in self.systems:
-            handlers += [(rf"users/(.+)/systems/{system['name']}",
-                          APIUserSelectionHandler, {"system": system['name']}),
 
-                         (rf"validate/users/(.+)/systems/{system['name']}",
-                          APIUserValidationHandler, {"system": system['name'], "host": system['hostname']}),
-                         ]
+#       # create the default list of handlers (to show the html template, load static assets, and load the logo)
+#       handlers = [
+#           ('', ViewHandler, {"loader": loader, "systems": self.systems,
+#            "entrypoint_types": self.entrypoint_types}),
+#           (r"static/(.*)", web.StaticFileHandler,
+#            {"path": self.settings["static_path"]}),
+#           (r"logo",
+#            LogoHandler, {"path": self.logo_file})
+#       ]
 
-        # create an APIHubHandler
-        handlers += [(rf"hub/users/(.+)/systems/(.+)", APIHubCurrentHandler),
-                     (rf"hub/users/(.+)/systems/(.+)/types/(.+)", APIHubTypeHandler)]
+#       # add any handlers set in the config file to the list of handlers
+#       handlers += self.additional_handlers
 
-        # create an APIPathHandler for each entrypoint type set in the config file
-        for entrypoint in self.entrypoint_types:
-            handlers += [(rf"users/(.+)/systems/(.+)/types/(.+)", APIPathHandler)]
+#       # create an APIUserSelectionHandler and APIUserValidationHandler for each system set in the config file
+#       for system in self.systems:
+#           handlers += [(rf"users/(.+)/systems/{system['name']}",
+#                         APIUserSelectionHandler, {"system": system['name']}),
 
-        # append the service prefix to the front of each request handlers' API endpoint
-        # e.g. users/{user}/systems/{system} => services/entrypoint/users/{user}/systems/{system}
-        handlers = list(
-            map(lambda x: (self.service_prefix + x[0], *x[1:]), handlers))
+#                        (rf"validate/users/(.+)/systems/{system['name']}",
+#                         APIUserValidationHandler, {"system": system['name'], "host": system['hostname']}),
+#                        ]
 
-        # The following API endpoints are created by default
-        # service_prefix/entrypoints/users/{user}/type/{type}?system={system} to get the list of available entrypoints for a given system
-        # service_prefix/users/{user}/systems/{system} to get a user's selected entrypoint for a system
-        # service_prefix/validate/users/{user}/systems/{system} to re-validate a user's selected entrypoint for a system
-        for handler in handlers:
-            self.log.info(handler[0])
+#       # create an APIHubHandler
+#       handlers += [(rf"hub/users/(.+)/systems/(.+)", APIHubCurrentHandler),
+#                    (rf"hub/users/(.+)/systems/(.+)/types/(.+)", APIHubTypeHandler)]
+
+#       # create an APIPathHandler for each entrypoint type set in the config file
+#       for entrypoint in self.entrypoint_types:
+#           handlers += [(rf"users/(.+)/systems/(.+)/types/(.+)", APIPathHandler)]
+
+#       # append the service prefix to the front of each request handlers' API endpoint
+#       # e.g. users/{user}/systems/{system} => services/entrypoint/users/{user}/systems/{system}
+#       handlers = list(
+#           map(lambda x: (self.service_prefix + x[0], *x[1:]), handlers))
+
+#       # The following API endpoints are created by default
+#       # service_prefix/entrypoints/users/{user}/type/{type}?system={system} to get the list of available entrypoints for a given system
+#       # service_prefix/users/{user}/systems/{system} to get a user's selected entrypoint for a system
+#       # service_prefix/validate/users/{user}/systems/{system} to re-validate a user's selected entrypoint for a system
+#       for handler in handlers:
+#           self.log.info(handler[0])
 
         # use the settings and handlers to create a Tornado web app
         self.app = web.Application(handlers, **self.settings)
