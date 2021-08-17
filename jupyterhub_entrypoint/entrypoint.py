@@ -19,7 +19,6 @@ from jupyterhub.utils import url_path_join
 from jupyterhub._data import DATA_FILES_PATH
 from jupyterhub.handlers.static import LogoHandler
 
-from .api import APIHubCurrentHandler, APIHubTypeHandler, APIPathHandler, APIUserSelectionHandler, APIUserValidationHandler
 from .ssl_context import SSLContext
 from .handlers import ViewHandler, EntrypointHandler, SelectionHandler, HubSelectionHandler
 from .types import EntrypointType
