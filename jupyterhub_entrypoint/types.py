@@ -110,13 +110,13 @@ class EntrypointType:
 
     def form_input_name(self):
         """Return required form element for managing entrypoint name.
-        
+
         Returns:
             str: Input form control text for HTML form
 
         """
 
-        return dedent(f"""<input 
+        return dedent(f"""<input
             name="entrypoint_name"
             class="form-control small-form"
             autocomplete="off"
@@ -147,6 +147,9 @@ class EntrypointType:
         Subclasses are required to provide an implementation of this method.
         This value is used to rewrite `Spawner.cmd` typically by the hub's
         `Spawner.pre_spawn_hook` configuration callback.
+
+        Args:
+            entrypoint_data (dict): Entrypoint data
 
         Returns:
             list: Arguments like `Spawner.cmd` used during hub `start()`
@@ -185,7 +188,7 @@ class EntrypointType:
         This is used by the `display_name` property, which is how forms should
         render an entrypoint types's human-friendly name when templating.
 
-        Returns: 
+        Returns:
             str: Entrypoint type name in a human-friendly strong format.
 
         """
@@ -197,7 +200,7 @@ class EntrypointType:
 
         Most entrypoint type subclasses have elements that need to be managed
         or configured when an entrypoint is being added or updated. Subclasses
-        must provide an implementation of this method to provide the required 
+        must provide an implementation of this method to provide the required
         form elements. By default, this methods just returns an empty string.
 
         This is a coroutine because rendering the form may require non-blocking
@@ -230,10 +233,15 @@ class EntrypointType:
 
         Another possibility is that an entrypoint type could be configured to
         allow only a limited set of entrypoints, governed by configuration and
-        managed by the operator/administrator. In this case, validation should 
-        ensure that users are selecting valid choices from that set, and not 
+        managed by the operator/administrator. In this case, validation should
+        ensure that users are selecting valid choices from that set, and not
         other choices that don't exist. This way we mitigate user input through
         UI as a vector.
+
+        This is a coroutine because validating entrypoint data may require
+        non-blocking interaction with external services.  For instance,
+        interacting with a service that can validate that a path exists on the
+        file-system.
 
         Raises:
             EntrypointValidationError: If extended validation fails, subclasses
@@ -247,37 +255,71 @@ class EntrypointType:
 
 
 class TrustedScriptEntrypointType(EntrypointType):
-    """Scripts on the file system trusted by admin
+    """Entrypoint type based on scripts managed by an administrator.
 
-    Assumption here is that an admin is maintaining a list scripts that users
-    may decide to use. As such, users may only choose them from a select list.
+    This entrypoint type is configured with a list of script paths that users
+    may choose from, to use as entrypoints. These scripts should be managed by
+    the administrator or trusted designee.
 
-    These scripts probably look something like
+    This is a usable reference implementation of `EntrypointType`. It shows how
+    the entrypoint command is formatted from entrypoint data, how basic
+    validation via JSON schema is extended, how type and display names are
+    customized, how the form hook is used to extend the entrypoint management
+    form, and demonstrates extended server-side validation of user input.
+
+    An entrypoint script in this case might look like:
 
         #!/bin/bash
         export SOME_VARIABLE=123
-        module load something
+        module load vasp
         exec "$@"
+
     """
 
     def __init__(self, *args):
+        """Initialize the trusted script entrypoint type.
+
+        Args:
+            *args (list): List of paths to trusted entrypoint scripts
+
+        """
+
         super().__init__()
         self.script_paths = args
         self.extend_schema({"path": {"type": "string"}})
 
     def cmd(self, entrypoint_data):
+        """Return replacement `Spawner.cmd` using the script entrypoint.
+
+        Args:
+            entrypoint_data (dict): Entrypoint data
+
+        Returns:
+            list: Arguments prefixed to include trusted entrypoint script
+
+        """
+
         return [
             entrypoint_data["path"],
             "jupyter-labhub"
         ]
 
     def get_type_name(self):
+        """Override default type name behavior."""
         return "trusted_script"
 
     def get_display_name(self):
+        """Override default display name behavior."""
         return "trusted script"
 
     async def form_hook(self):
+        """Extend form to include list of trusted entrypoint scripts.
+
+        Returns:
+            str: Form content for script select field
+
+        """
+
         content = dedent(f"""<select
             name="path"
             class="small-form form-control"
@@ -290,10 +332,42 @@ class TrustedScriptEntrypointType(EntrypointType):
 
         return content
 
+    async def validation_hook(self, entrypoint_data):
+        """Validate that the chosen path is in the list of script paths.
+
+        Raises:
+            EntrypointValidationError: If the script path is unknown.
+
+        """
+
+        if entrypoint_data["path"] not in self.script_paths:
+            raise EntrypointValidationError
+
 
 class ShifterEntrypointType(EntrypointType):
+    """Entrypoint type for Shifter, a Docker container runtime.
+
+    This entrypoint type leverages an external services that manages a list of
+    Shifter images available for running Jupyter, that users may select from to
+    use as entrypoints. These images should be managed by the administrator or
+    trusted designee.
+
+    A usable reference implementation of `EntrypointType`, this class shows all
+    the same kinds of customizations as `TrustedScriptEntrypointType`, but it
+    includes a non-blocking call to an external service during both form and
+    validation hook execution.
+
+    """
 
     def __init__(self, shifter_api_url, shifter_api_token=None):
+        """Initialize the Shifter entrypoint type.
+
+        Args:
+            shifter_api_url (str): URL for Shifter image service
+            shifter_api_token (str): API token for Shifter image service
+
+        """
+
         super().__init__()
         self.shifter_api_url = shifter_api_url
         self.shifter_api_token = (
@@ -302,19 +376,41 @@ class ShifterEntrypointType(EntrypointType):
         self.extend_schema({"image": {"type": "string"}})
 
     def cmd(self, entrypoint_data):
+        """Return replacement `Spawner.cmd` using a Shifter entrypoint.
+
+        Args:
+            entrypoint_data (dict): Entrypoint data
+
+        Returns:
+            list: Arguments prefixed to include Shifter image
+
+        """
+
         return [
-            "shifter", 
+            "shifter",
             f"--image={entrypoint_data['image']}",
             "jupyter-labhub"
         ]
 
     async def form_hook(self):
-        images = await self.get_images()
+        """Extend form to include list of Shifter images.
+
+        Returns:
+            str: Form content for image select field
+
+        """
+
+        try:
+            images = await self.get_images()
+            message = "select image"
+        except:
+            images = list()
+            message = "image lookup failed, try later"
         content = dedent(f"""<select
             name="image"
             class="small-form form-control entrypoint-data"
         >
-        <option disabled selected value>-- select image --</option>
+        <option disabled selected value>-- {message} --</option>
         """)
         for image in images:
             content += f"<option>{image}</option>"
@@ -323,19 +419,28 @@ class ShifterEntrypointType(EntrypointType):
         return content
 
     async def validation_hook(self, entrypoint_data):
-        images = await self.get_images()
+        """Validate that the chosen image is known to Shifter.
+
+        Raises:
+            EntrypointValidationError: If the imge is unknown.
+
+        """
+
+        try:
+            images = await self.get_images()
+        except:
+            # FIXME log message would be good here...
+            raise EntrypointValidationError
         if entrypoint_data["image"] not in images:
-            raise ValueError
+            raise EntrypointValidationError
 
     async def get_images(self):
+        """Gets images from the Shifter image service."""
+
         client = AsyncHTTPClient()
-        try:
-            response = await client.fetch(
-                self.shifter_api_url,
-                headers={"Authorization": self.shifter_api_token}
-            )
-        except Exception as e:
-            print(f"Error: {e}")
-            return []
+        response = await client.fetch(
+            self.shifter_api_url,
+            headers={"Authorization": self.shifter_api_token}
+        )
         result = json_decode(response.body)
         return result["images"]
