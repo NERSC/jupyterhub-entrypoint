@@ -99,11 +99,6 @@ class EntrypointService(Application, Configurable):
         help="Entrypoint service prefix"
     ).tag(config=True)
 
-#   systems = List(
-#       [],
-#       help="A list of available systems"
-#   ).tag(config=True)
-
     tags = List(
         [], #Dict,
         help="List of tags"
@@ -258,56 +253,15 @@ class EntrypointService(Application, Configurable):
         handlers.append(handler)
 
         handlers += [
-#           (self.service_prefix + r"(.*)", ViewHandler, {"loader": loader}),
-#           (r"(.*)", ViewHandler, {"loader": loader, "systems": self.systems,
-#            "entrypoint_types": self.entrypoint_types}),
             (self.service_prefix + r"static/(.*)", web.StaticFileHandler,
              {"path": self.settings["static_path"]}),
             (self.service_prefix + r"logo",
              LogoHandler, {"path": self.logo_file})
         ]
 
-
-
-#       # create the default list of handlers (to show the html template, load static assets, and load the logo)
-#       handlers = [
-#           ('', ViewHandler, {"loader": loader, "systems": self.systems,
-#            "entrypoint_types": self.entrypoint_types}),
-#           (r"static/(.*)", web.StaticFileHandler,
-#            {"path": self.settings["static_path"]}),
-#           (r"logo",
-#            LogoHandler, {"path": self.logo_file})
-#       ]
-
 #       # add any handlers set in the config file to the list of handlers
 #       handlers += self.additional_handlers
 
-#       # create an APIUserSelectionHandler and APIUserValidationHandler for each system set in the config file
-#       for system in self.systems:
-#           handlers += [(rf"users/(.+)/systems/{system['name']}",
-#                         APIUserSelectionHandler, {"system": system['name']}),
-
-#                        (rf"validate/users/(.+)/systems/{system['name']}",
-#                         APIUserValidationHandler, {"system": system['name'], "host": system['hostname']}),
-#                        ]
-
-#       # create an APIHubHandler
-#       handlers += [(rf"hub/users/(.+)/systems/(.+)", APIHubCurrentHandler),
-#                    (rf"hub/users/(.+)/systems/(.+)/types/(.+)", APIHubTypeHandler)]
-
-#       # create an APIPathHandler for each entrypoint type set in the config file
-#       for entrypoint in self.entrypoint_types:
-#           handlers += [(rf"users/(.+)/systems/(.+)/types/(.+)", APIPathHandler)]
-
-#       # append the service prefix to the front of each request handlers' API endpoint
-#       # e.g. users/{user}/systems/{system} => services/entrypoint/users/{user}/systems/{system}
-#       handlers = list(
-#           map(lambda x: (self.service_prefix + x[0], *x[1:]), handlers))
-
-#       # The following API endpoints are created by default
-#       # service_prefix/entrypoints/users/{user}/type/{type}?system={system} to get the list of available entrypoints for a given system
-#       # service_prefix/users/{user}/systems/{system} to get a user's selected entrypoint for a system
-#       # service_prefix/validate/users/{user}/systems/{system} to re-validate a user's selected entrypoint for a system
 #       for handler in handlers:
 #           self.log.info(handler[0])
 
