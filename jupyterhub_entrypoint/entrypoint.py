@@ -23,7 +23,6 @@ from .api import APIHubCurrentHandler, APIHubTypeHandler, APIPathHandler, APIUse
 from .ssl_context import SSLContext
 from .handlers import ViewHandler, EntrypointHandler, SelectionHandler, HubSelectionHandler
 from .types import EntrypointType
-# from .storage import FileStorage
 
 from jupyterhub_entrypoint import dbi
 
@@ -77,11 +76,6 @@ class EntrypointService(Application, Configurable):
         help="TBD"
     )
 
-#   file_storage_template_path = Unicode(
-#       "{user[0]}/{user}/{type}/{uuid}.json",
-#       help="Path for where file storage object saves files"
-#   ).tag(config=True)
-
     logo_file = Unicode(
         "",
         help="Logo path, can be used to override JupyterHub one",
@@ -104,11 +98,6 @@ class EntrypointService(Application, Configurable):
                        "/services/entrypoint/"),
         help="Entrypoint service prefix"
     ).tag(config=True)
-
-#   storage_path = Unicode(
-#       os.environ.get("STORAGE_PATH", "./data"),
-#       help="Location for file storage"
-#   ).tag(config=True)
 
 #   systems = List(
 #       [],
@@ -210,7 +199,6 @@ class EntrypointService(Application, Configurable):
             "entrypoint_api_token": self.entrypoint_api_token,
             "static_path": os.path.join(self.data_files_path, "static"),
             "static_url_prefix": url_path_join(self.service_prefix, "static/"),
-#           "storage": FileStorage(os.path.join(self.storage_path, self.file_storage_template_path))
             "engine": engine,
             "tags": self.tags,
         }
