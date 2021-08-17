@@ -13,7 +13,14 @@ from tornado.escape import json_decode
 from jupyterhub_entrypoint import dbi
 
 
-class ViewHandler(HubAuthenticated, web.RequestHandler):
+class BaseHandler(web.RequestHandler):
+
+    def initialize(self):
+        super().initialize()
+        self.engine = self.settings["engine"]
+
+
+class ViewHandler(HubAuthenticated, BaseHandler):
 
     def initialize(self, tag, entrypoint_types, loader):#, systems, entrypoint_types):
         super().initialize()
@@ -25,8 +32,6 @@ class ViewHandler(HubAuthenticated, web.RequestHandler):
         self.loader = loader
         self.env = Environment(loader=self.loader, enable_async=True)
         self.template_index = self.env.get_template('index.html')
-
-        self.engine = self.settings["engine"]
 
     def render(self, template, *args, **kwargs):
         return self.env.get_template(template).render(*args, **kwargs)
@@ -66,12 +71,9 @@ class ViewHandler(HubAuthenticated, web.RequestHandler):
         self.write(chunk)
 
 
-class EntrypointHandler(HubAuthenticated, web.RequestHandler):
+class EntrypointHandler(HubAuthenticated, BaseHandler):
 
-    def initialize(self):
-        super().initialize()
-        self.engine = self.settings["engine"]
-
+    @web.authenticated
     async def post(self, user, _): #probably should be in own handler
         try:
             payload = json_decode(self.request.body)
@@ -94,23 +96,22 @@ class EntrypointHandler(HubAuthenticated, web.RequestHandler):
         except:
             self.write({"result": False, "message": "SADNESS"})
     
+    @web.authenticated
     async def delete(self, user, entrypoint_name):
         async with self.engine.begin() as conn:
             await dbi.delete_entrypoint(conn, user, entrypoint_name)
         self.write({})
 
 
-class SelectionHandler(HubAuthenticated, web.RequestHandler):
+class SelectionHandler(HubAuthenticated, BaseHandler):
 
-    def initialize(self):
-        super().initialize()
-        self.engine = self.settings["engine"]
-
+    @web.authenticated
     async def put(self, user, entrypoint_name, tag_name):
         async with self.engine.begin() as conn:
             await dbi.update_selection(conn, user, entrypoint_name, tag_name)
         self.write({})
 
+    @web.authenticated
     async def delete(self, user, entrypoint_name, tag_name):
         # FIXME entrypoint_name isn't doing anything here, maybe don't need it
         async with self.engine.begin() as conn:
@@ -118,14 +119,15 @@ class SelectionHandler(HubAuthenticated, web.RequestHandler):
         self.write({})
 
 
-class HubSelectionHandler(HubAuthenticated, web.RequestHandler):
+class HubSelectionHandler(HubAuthenticated, BaseHandler):
 
     def initialize(self, entrypoint_types):
         super().initialize()
-        self.engine = self.settings["engine"]
         self.entrypoint_types = entrypoint_types
 
+    @web.authenticated
     async def get(self, user, tag_name):
+        # need to verify API token
 
         async with self.engine.begin() as conn:
             entrypoint_data = await dbi.retrieve_selection(
