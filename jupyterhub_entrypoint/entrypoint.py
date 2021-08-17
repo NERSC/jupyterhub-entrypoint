@@ -42,12 +42,6 @@ class EntrypointService(Application, Configurable):
         help="Generate default config file"
     ).tag(config=True)
 
-#   # The following variables are configurable traitlet variables
-#   additional_handlers = List(
-#       [],
-#       help="A list of additional request handlers"
-#   ).tag(config=True)
-
     config_file = Unicode(
         "entrypoint_config.py",
         help="Config file to load"
@@ -258,9 +252,6 @@ class EntrypointService(Application, Configurable):
             (self.service_prefix + r"logo",
              LogoHandler, {"path": self.logo_file})
         ]
-
-#       # add any handlers set in the config file to the list of handlers
-#       handlers += self.additional_handlers
 
 #       for handler in handlers:
 #           self.log.info(handler[0])
