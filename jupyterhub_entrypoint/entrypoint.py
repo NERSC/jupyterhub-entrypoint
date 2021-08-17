@@ -253,9 +253,6 @@ class EntrypointService(Application, Configurable):
              LogoHandler, {"path": self.logo_file})
         ]
 
-#       for handler in handlers:
-#           self.log.info(handler[0])
-
         # use the settings and handlers to create a Tornado web app
         self.app = web.Application(handlers, **self.settings)
 
