@@ -4,6 +4,8 @@
 # It returns a rendered jinja template when its GET method is called
 #########################################################################
 
+import os
+
 from jinja2 import Environment
 from jupyterhub.utils import url_path_join
 from jupyterhub.services.auth import HubAuthenticated
@@ -119,15 +121,17 @@ class SelectionHandler(HubAuthenticated, BaseHandler):
         self.write({})
 
 
-class HubSelectionHandler(HubAuthenticated, BaseHandler):
+class HubSelectionHandler(BaseHandler):
 
     def initialize(self, entrypoint_types):
         super().initialize()
+        self.entrypoint_api_token = os.environ["ENTRYPOINT_API_TOKEN"]
         self.entrypoint_types = entrypoint_types
 
-    @web.authenticated
     async def get(self, user, tag_name):
-        # need to verify API token
+
+        if not self.validate_token():
+            self.write({})
 
         async with self.engine.begin() as conn:
             entrypoint_data = await dbi.retrieve_selection(
@@ -136,9 +140,15 @@ class HubSelectionHandler(HubAuthenticated, BaseHandler):
                 tag_name
             )
        
-        cmd = None
+        cmd = list()
         for entrypoint_type in self.entrypoint_types:
             if entrypoint_type.type_name != entrypoint_data["entrypoint_type"]:
                 continue
             cmd = entrypoint_type.cmd(entrypoint_data)
         self.write(dict(cmd=cmd))
+
+    def validate_token(self):
+        return (
+            self.request.headers["Authorization"] ==
+            f"token {self.entrypoint_api_token}"
+        )
