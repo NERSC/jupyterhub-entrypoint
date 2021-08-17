@@ -28,34 +28,6 @@ from .types import EntrypointType
 from jupyterhub_entrypoint import dbi
 
 
-async def populate(conn):
-    tag_names = ["cori", "perlmutter"]
-    users = ["admin", "user1"]
-    entrypoint_names=["hello", "world", "happy", "chicken"]
-    entrypoint_types=["conda", "script", "shifter", "other"]
-    await _populate(conn, tag_names, users, entrypoint_names, entrypoint_types)
-
-
-async def _populate(conn, tag_names, users, entrypoint_names, entrypoint_types):
-    entrypoint_args = list()
-    count = 0
-    divisor = len(tag_names) + 1
-    for u in users:
-        for n in entrypoint_names:
-            for t in entrypoint_types:
-                data = dict(
-                    user=u,
-                    entrypoint_name=f"{n}-{t}",
-                    entrypoint_type=t,
-                    other="/a/b/c/d"
-                )
-                arg = (u, f"{n}-{t}", t, data, tag_names[:count%divisor])
-                entrypoint_args.append(arg)
-                count += 1
-    for args in entrypoint_args:
-        await dbi.create_entrypoint(conn, *args)
-
-
 class EntrypointService(Application, Configurable):
     """Configurable Tornado web application class that initializes request handlers"""
 
@@ -227,10 +199,6 @@ class EntrypointService(Application, Configurable):
             async with engine.begin() as conn:
                 for tag in self.tags:
                     await dbi.create_tag(conn, tag["tag_name"])
-
-            async with engine.begin() as conn:
-                await populate(conn)
-            
 
         loop = asyncio.get_event_loop()
         coroutine = init_db(engine)
