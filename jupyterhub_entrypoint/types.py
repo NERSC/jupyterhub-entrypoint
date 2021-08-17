@@ -422,7 +422,7 @@ class ShifterEntrypointType(EntrypointType):
         """Validate that the chosen image is known to Shifter.
 
         Raises:
-            EntrypointValidationError: If the imge is unknown.
+            EntrypointValidationError: If the image is unknown.
 
         """
 
