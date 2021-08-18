@@ -74,7 +74,7 @@ async def retrieve_one_entrypoint(conn, user, entrypoint_name):
         entrypoint_name (str): User-assigned entrypoint name
 
     Returns:
-        tuple: dict of entrypoint data, and list of associated tag names
+        dict: Contains entrypoint data and list of tag names
 
     Raises:
         ValueError: If no entrypoint named `entrypoint_name` is found.
@@ -107,7 +107,7 @@ async def retrieve_one_entrypoint(conn, user, entrypoint_name):
     if not entrypoint_data:
         raise ValueError
 
-    return entrypoint_data, tag_names
+    return dict(entrypoint_data=entrypoint_data, tag_names=tag_names)
 
 async def retrieve_many_entrypoints(
     conn, 
@@ -117,6 +117,30 @@ async def retrieve_many_entrypoints(
 ):
     """Retrieve data, selection status, and tag for a user's entrypoints.
 
+    Returns a data structure where top-level keys are tag names, next-level
+    keys are entrypoint type names, and the corresponding valures are a list of
+    dictionaries with keys "entrypoint_data" and "selected." The former is the
+    entrypoint data stored in the database, and selected is a boolean or null
+    inficating whether the entrypoing is a selection.  It looks like this:
+
+        {
+          tag1: {
+            type1: [{
+              entrypoint_data: { ... },
+              selected: null
+            }, {
+              entrypoint_data: { ... },
+              selected: true
+            }],
+            type2: [ ... ],
+            ...
+          },
+          tag2: {
+            type1: [ ... ],
+            type3: [ ... ],
+          }
+        }
+
     Args:
         conn            (AsyncConnection): SQLAlchemy asyncio connection proxy
         user            (str): User name
@@ -124,8 +148,7 @@ async def retrieve_many_entrypoints(
         tag_name        (str, optional): Limit to a particular tag
 
     Returns:
-        dict: Key is type, value is a list of (entrypoint, selection status, 
-        tag name) tuples
+        dict: Actually dict of dict of list of dict
 
     """
 
@@ -140,6 +163,7 @@ async def retrieve_many_entrypoints(
         .join(tags, isouter=True)
         .where(entrypoints.c.user == user)
         .order_by(
+            tags.c.tag_name,
             entrypoints.c.entrypoint_type,
             entrypoints.c.entrypoint_name
         )
@@ -157,11 +181,19 @@ async def retrieve_many_entrypoints(
 
     results = await conn.execute(statement)
 
-    return dict(
-        (key, list(group)) for (key, group) in itertools.groupby(
-            results.fetchall(), lambda r: r.entrypoint_type
-        )
-    )
+    grouper = itertools.groupby(results.fetchall(), lambda r: r.tag_name)
+    data = dict((tag_name, list(rows)) for (tag_name, rows) in grouper)
+
+    for tag_name, rows in data.items():
+        grouper = itertools.groupby(rows, lambda r: r.entrypoint_type)
+        data[tag_name] = dict((
+            entrypoint_type, [{
+                "entrypoint_data": r.entrypoint_data,
+                "selected": r.selected
+            } for r in rows]
+        ) for (entrypoint_type, rows) in grouper)
+
+    return data
 
 async def update_entrypoint(
     conn,
