@@ -19,7 +19,10 @@ async def test_ok(engine, tag_names, entrypoint_args):
     async with engine.begin() as conn:
         output = await dbi.retrieve_one_entrypoint(conn, user, entrypoint_name)
     assert len(output) == 2
-    output_entrypoint_data, output_tag_names = output
+    assert "entrypoint_data" in output
+    assert "tag_names" in output
+    output_entrypoint_data = output["entrypoint_data"]
+    output_tag_names = output["tag_names"]
     for key in args[3]:
         assert output_entrypoint_data[key] == args[3][key]
     assert len(output_tag_names) == len(args[4])

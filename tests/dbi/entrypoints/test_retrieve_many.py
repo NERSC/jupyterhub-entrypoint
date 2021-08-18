@@ -20,15 +20,24 @@ async def test_all_ok(engine, tag_names, entrypoint_args, users):
     user_entrypoint_args = (
         [args for args in entrypoint_args if args[0] == user]
     )
-    assert len(outputs) == len(user_entrypoint_args)
+
+    for (user, entrypoint_name, entrypoint_type, data, tag_names) in user_entrypoint_args:
+        for tag_name in tag_names:
+            assert next((
+                True for x in outputs[tag_name][entrypoint_type] if 
+                x["entrypoint_data"]["user"] == user and 
+                x["entrypoint_data"]["entrypoint_name"] == entrypoint_name and
+                x["entrypoint_data"]["entrypoint_type"] == entrypoint_type and
+                all([x["entrypoint_data"][key] == data[key] for key in data])
+            ), False)
 
 @pytest.mark.asyncio
 async def test_type_ok(
-        engine,
-        tag_names,
-        entrypoint_args,
-        users,
-        entrypoint_types
+    engine,
+    tag_names,
+    entrypoint_args,
+    users,
+    entrypoint_types
 ):
     async with engine.begin() as conn:
         for tag_name in tag_names:
@@ -50,10 +59,10 @@ async def test_type_ok(
 
 @pytest.mark.asyncio
 async def test_tag_ok(
-        engine,
-        tag_names,
-        entrypoint_args,
-        users
+    engine,
+    tag_names,
+    entrypoint_args,
+    users
 ):
     async with engine.begin() as conn:
         for tag_name in tag_names:
@@ -71,15 +80,23 @@ async def test_tag_ok(
     user_entrypoint_args = (
         [args for args in entrypoint_args if args[0] == user and tag_name in args[4]]
     )
-    assert len(outputs) == len(user_entrypoint_args)
+    
+    for (user, entrypoint_name, entrypoint_type, data, _) in user_entrypoint_args:
+        assert next((
+            True for x in outputs[tag_name][entrypoint_type] if 
+            x["entrypoint_data"]["user"] == user and 
+            x["entrypoint_data"]["entrypoint_name"] == entrypoint_name and
+            x["entrypoint_data"]["entrypoint_type"] == entrypoint_type and
+            all([x["entrypoint_data"][key] == data[key] for key in data])
+        ), False)
 
 @pytest.mark.asyncio
 async def test_type_tag_ok(
-        engine,
-        tag_names,
-        entrypoint_args,
-        users,
-        entrypoint_types
+    engine,
+    tag_names,
+    entrypoint_args,
+    users,
+    entrypoint_types
 ):
     async with engine.begin() as conn:
         for tag_name in tag_names:
@@ -99,15 +116,23 @@ async def test_type_tag_ok(
         [args for args in entrypoint_args 
             if args[0] == user and args[2] == entrypoint_type and tag_name in args[4]]
     )
-    assert len(outputs) == len(user_entrypoint_args)
+
+    for (user, entrypoint_name, _, data, _) in user_entrypoint_args:
+        assert next((
+            True for x in outputs[tag_name][entrypoint_type] if 
+            x["entrypoint_data"]["user"] == user and 
+            x["entrypoint_data"]["entrypoint_name"] == entrypoint_name and
+            x["entrypoint_data"]["entrypoint_type"] == entrypoint_type and
+            all([x["entrypoint_data"][key] == data[key] for key in data])
+        ), False)
 
 @pytest.mark.asyncio
 async def test_type_unknown(
-        engine,
-        tag_names,
-        entrypoint_args,
-        users,
-        entrypoint_types
+    engine,
+    tag_names,
+    entrypoint_args,
+    users,
+    entrypoint_types
 ):
     async with engine.begin() as conn:
         for tag_name in tag_names:
@@ -126,10 +151,10 @@ async def test_type_unknown(
 
 @pytest.mark.asyncio
 async def test_tag_unknown(
-        engine,
-        tag_names,
-        entrypoint_args,
-        users
+    engine,
+    tag_names,
+    entrypoint_args,
+    users
 ):
     async with engine.begin() as conn:
         for tag_name in tag_names:
@@ -145,4 +170,3 @@ async def test_tag_unknown(
     async with engine.begin() as conn:
         outputs = await dbi.retrieve_many_entrypoints(conn, user, None, tag_name)
     assert len(outputs) == 0
-

@@ -20,7 +20,10 @@ async def test_ok(engine, tag_names, entrypoint_args):
         await dbi.update_entrypoint(conn, *args)
     async with engine.begin() as conn:
         output = await dbi.retrieve_one_entrypoint(conn, *args[:2])
-    output_entrypoint_data, output_tags = output
+    assert "entrypoint_data" in output
+    assert "tag_names" in output
+    output_entrypoint_data = output["entrypoint_data"]
+    output_tags = output["tag_names"]
     assert len(output_entrypoint_data) == 1
     assert "hello" in output_entrypoint_data
     assert output_entrypoint_data["hello"] == "world"

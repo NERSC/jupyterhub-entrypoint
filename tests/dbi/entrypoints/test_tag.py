@@ -23,7 +23,7 @@ async def test_ok(engine, tag_names, entrypoint_args):
     user, entrypoint_name = args[:2]
     async with engine.begin() as conn:
         output = await dbi.retrieve_one_entrypoint(conn, user, entrypoint_name)
-    assert not output[1]
+    assert not output["tag_names"]
   
     for tag_name in tag_names:
         async with engine.begin() as conn:
@@ -31,9 +31,9 @@ async def test_ok(engine, tag_names, entrypoint_args):
 
     async with engine.begin() as conn:
         output = await dbi.retrieve_one_entrypoint(conn, user, entrypoint_name)
-    assert len(output[1]) == len(tag_names)
+    assert len(output["tag_names"]) == len(tag_names)
     for tag_name in tag_names:
-        assert tag_name in output[1]
+        assert tag_name in output["tag_names"]
 
 @pytest.mark.asyncio
 async def test_idempotent(engine, tag_names, entrypoint_args):
@@ -55,7 +55,7 @@ async def test_idempotent(engine, tag_names, entrypoint_args):
     user, entrypoint_name = args[:2]
     async with engine.begin() as conn:
         output = await dbi.retrieve_one_entrypoint(conn, user, entrypoint_name)
-    assert not output[1]
+    assert not output["tag_names"]
  
     for i in range(2): 
         for tag_name in tag_names:
@@ -64,9 +64,9 @@ async def test_idempotent(engine, tag_names, entrypoint_args):
 
         async with engine.begin() as conn:
             output = await dbi.retrieve_one_entrypoint(conn, user, entrypoint_name)
-        assert len(output[1]) == len(tag_names)
+        assert len(output["tag_names"]) == len(tag_names)
         for tag_name in tag_names:
-            assert tag_name in output[1]
+            assert tag_name in output["tag_names"]
 
 @pytest.mark.asyncio
 async def test_entrypoint_unknown(engine, tag_names, entrypoint_args):
@@ -104,7 +104,7 @@ async def test_tag_unknown(engine, tag_names, entrypoint_args):
     user, entrypoint_name = args[:2]
     async with engine.begin() as conn:
         output = await dbi.retrieve_one_entrypoint(conn, user, entrypoint_name)
-    assert not output[1]
+    assert not output["tag_names"]
 
     with pytest.raises(ValueError):
         async with engine.begin() as conn:
