@@ -31,13 +31,18 @@ c.Spawner.cmd = ['jupyter-labhub']
 
 # Define pre-spawn hook to rewrite Spawner.cmd before start()
 # May need to look a bit different if options_form is defined!
+#
+# If there are multiple tags defined in the entrypoint service, the pre-spawn
+# hook needs to know how to figure out which one should be requested. One way
+# to do this would be to leverage named servers and read the "name" spawner
+# attribute.
 
 async def pre_spawn_hook(spawner):
     user = spawner.user.name
     client = AsyncHTTPClient()
     try:
         response = await client.fetch(
-            f"http://127.0.0.1:8889/services/entrypoint/api/hub/users/{user}/selections/cori",
+            f"http://127.0.0.1:8889/services/entrypoint/api/hub/users/{user}/selections/hal",
             headers={"Authorization": f"token {os.environ['ENTRYPOINT_API_TOKEN']}"}
         )
     except Exception as e:
