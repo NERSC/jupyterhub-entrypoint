@@ -20,7 +20,7 @@ from jupyterhub._data import DATA_FILES_PATH
 from jupyterhub.handlers.static import LogoHandler
 
 from .ssl_context import SSLContext
-from .handlers import ViewHandler, EntrypointHandler, SelectionHandler, HubSelectionHandler
+from .handlers import ViewHandler, EntrypointPostHandler, EntrypointDeleteHandler, SelectionHandler, HubSelectionHandler
 from .types import EntrypointType
 
 from jupyterhub_entrypoint import dbi
@@ -218,11 +218,20 @@ class EntrypointService(Application, Configurable):
         )
         handlers.append(handler)
 
-        # Entrypoint API handler
+        # Entrypoint API delete handler
 
         handler = (
-            self.service_prefix + "api/mgmt/users/(.+)/entrypoints/(.*)",
-            EntrypointHandler
+            self.service_prefix + "api/mgmt/users/(.+)/entrypoints/(.+)",
+            EntrypointDeleteHandler
+        )
+        handlers.append(handler)
+
+        # Entrypoint API post handler
+
+        handler = (
+            self.service_prefix + "api/mgmt/users/(.+)/entrypoints/",
+            EntrypointPostHandler,
+            dict(entrypoint_types=self.entrypoint_types)
         )
         handlers.append(handler)
 
