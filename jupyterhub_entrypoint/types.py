@@ -26,6 +26,7 @@ class EntrypointType:
     """Base entrypoint type class.
 
     Subclass this and override the following methods:
+
     - cmd               implementation required
     - get_type_name     optional, default is based on class name
     - get_display_name  optional, default is get_type_name()
@@ -33,6 +34,7 @@ class EntrypointType:
     - validation_hook   optional, coroutine
 
     An `EntrypointType` has the following responsibilities:
+
     - Converting entrypoint data into a replacement for the hub `Spawner.cmd`
     - Providing contents for a form used to manage a type of entrypoint
     - Validating input entrypoint data in an extensible way
