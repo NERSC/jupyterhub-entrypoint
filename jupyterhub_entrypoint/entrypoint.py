@@ -15,6 +15,7 @@ from jinja2 import FileSystemLoader
 from traitlets import Bool, Dict, Instance, Integer, List, Tuple, Type, Unicode, default, observe
 from traitlets.config import Application, Configurable
 
+from jupyterhub.log import CoroutineLogFormatter
 from jupyterhub.utils import url_path_join
 from jupyterhub._data import DATA_FILES_PATH
 from jupyterhub.handlers.static import LogoHandler
@@ -134,13 +135,15 @@ class EntrypointService(Application, Configurable):
     def initialize(self, argv=None):
         super().initialize(argv)
 
-        logging.basicConfig(level=logging.INFO)
-        logging.getLogger('tornado.access').disabled = not self.tornado_logs
-        self.log = logging.getLogger(__name__)
+#       logging.basicConfig(level=logging.INFO)
+#       logging.getLogger('tornado.access').disabled = not self.tornado_logs
+#       self.log = logging.getLogger(__name__)
 
         if self.generate_config:
             print(self.generate_config_file())
             sys.exit(0)
+
+        self.init_logging()
 
         # load the config file if it's there
         if self.config_file:
@@ -163,7 +166,7 @@ class EntrypointService(Application, Configurable):
         # create SQLAlchemy engine and optionally initialize database FIXME parameterize
         engine = dbi.async_engine(
             f"sqlite+aiosqlite:///:memory:",
-#           echo=True,
+            echo=True,
             future=True
         )
 
@@ -263,6 +266,47 @@ class EntrypointService(Application, Configurable):
 
         # use the settings and handlers to create a Tornado web app
         self.app = web.Application(handlers, **self.settings)
+
+
+    _log_formatter_cls = CoroutineLogFormatter
+
+    @default('log_datefmt')
+    def _log_datefmt_default(self):
+        """Exclude date from default date format"""
+        return "%Y-%m-%d %H:%M:%S"
+
+    @default('log_format')
+    def _log_format_default(self):
+        """override default log format to include time"""
+        return "%(color)s[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s %(module)s:%(lineno)d]%(end_color)s %(message)s"
+
+    def init_logging(self):
+        # This prevents double log messages because tornado use a root logger
+        # that self.log is a child of. The logging module dipatches log
+        # messages to a log and all of its ancenstors until propagate is set to
+        # False.
+        self.log.propagate = False
+
+        _formatter = self._log_formatter_cls(
+            fmt=self.log_format, datefmt=self.log_datefmt
+        )
+
+        # disable curl debug, which is TOO MUCH
+        logging.getLogger('tornado.curl_httpclient').setLevel(
+            max(self.log_level, logging.INFO)
+        )
+
+        for name in ("access", "application", "general"):
+            # ensure all log statements identify the application they come from
+            log = logging.getLogger(f"tornado.{name}")
+            log.name = self.log.name
+
+        # hook up tornado's and oauthlib's loggers to our own
+        for name in ("tornado", "oauthlib"):
+            logger = logging.getLogger(name)
+            logger.propagate = True
+            logger.parent = self.log
+            logger.setLevel(self.log.level)
 
     # create an ssl cert
     def init_ssl_context(self):
