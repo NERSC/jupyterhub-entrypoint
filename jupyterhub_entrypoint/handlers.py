@@ -4,6 +4,7 @@
 # It returns a rendered jinja template when its GET method is called
 #########################################################################
 
+import logging
 import os
 
 from jinja2 import Environment
@@ -24,6 +25,13 @@ class BaseHandler(web.RequestHandler):
 
         super().initialize()
         self.engine = self.settings["engine"]
+
+    @property
+    def log(self):
+        """I can't seem to avoid typing self.log"""
+        return self.settings.get(
+            "log", logging.getLogger("tornado.application")
+        )
 
 
 class ViewHandler(HubAuthenticated, BaseHandler):
@@ -52,10 +60,12 @@ class ViewHandler(HubAuthenticated, BaseHandler):
                 conn, username, None, tag_name
             )
 
+        entrypoints = entrypoints.get(tag_name, {})
+
         selection = None
         for entrypoint_type in self.entrypoint_types:
             for entrypoint in entrypoints.get(entrypoint_type.type_name, []):
-                if entrypoint.selected:
+                if entrypoint["selected"]:
                     selection = entrypoint
                     break
 
@@ -111,8 +121,11 @@ class EntrypointPostHandler(EntrypointHandler):
 
             self.write({"result": True, "message": "Entrypoint added"})
         except EntrypointValidationError:
+            self.log.error(f"Validation error: {entrypoint_data}")
             self.write({"result": False, "message": "Validation error"})
-        except:
+        except Exception as e:
+            self.log.error(f"Error ({e}): {entrypoint_data}")
+            # Types of errors may need a bit more elaboration (like unique names)
             self.write({"result": False, "message": "Error"})
 
     async def validate(self, user, entrypoint_data):

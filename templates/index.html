@@ -37,7 +37,7 @@
         <dt>Selected entrypoint for {{tag_name}}:</dt>
         <dd id="current-entrypoint">
         {% if selection %}
-          {{selection.entrypoint_name}} ({{selection.entrypoint_type}})
+          {{selection.entrypoint_data.entrypoint_name}} ({{selection.entrypoint_data.entrypoint_type}})
         {% else %}
           <em>None</em>
         {% endif %}
@@ -70,8 +70,8 @@
             <option disabled selected value>
                 -- select or manage an entrypoint --
             </option>
-            {% for entrypoint_data in entrypoints[type_name] %}
-            <option>{{entrypoint_data.entrypoint_name}}</option>
+            {% for entrypoint in entrypoints[type_name] %}
+            <option>{{entrypoint.entrypoint_data.entrypoint_name}}</option>
             {% endfor %}
           </select>
 
