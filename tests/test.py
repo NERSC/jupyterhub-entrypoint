@@ -61,58 +61,66 @@ class Test():
         assert title.text == 'JupyterHub Entrypoint Service'
 
         elem = self.driver.find_elements_by_xpath(
-            "//*[contains(text(), 'Manage Conda Entrypoints')]")
+            "//*[contains(text(), 'Manage trusted script entrypoints')]")
         assert len(elem) == 1
 
         elem = self.driver.find_elements_by_xpath(
-            "//*[contains(text(), 'Selected custom entrypoint for Cori')]")
+            "//*[contains(text(), 'Selected entrypoint for multivac')]")
         assert len(elem) == 1
 
     def add_entrypoint(self):
-        elem = self.driver.find_element_by_id('add-conda-button')
+        elem = self.driver.find_element_by_id('add-trusted_script-button')
         elem.click()
 
-        path_input = self.driver.find_element_by_id('add-conda-path')
-        path_input.send_keys('/envs/my-env')
+        name_input = self.driver.find_element_by_name('entrypoint_name')
+        name_input.send_keys('my-env')
 
-        name_input = self.driver.find_element_by_id('add-conda-name')
-        name_input.send_keys('My Env')
+        elem = self.driver.find_element_by_name('path')
+        elem.click()
+
+        path_input = self.driver.find_element_by_xpath(
+            "//option[contains(text(), '/usr/local/bin/example-entrypoint.sh')]"
+        )
+        path_input.click()
 
         elem = self.driver.find_element_by_xpath(
             "//button[contains(text(), 'Add entrypoint')]")
         elem.click()
 
-        # put in API calls to check it was added correctly
+        # FIXME put in API calls to check it was added correctly
 
     def select_entrypoint(self):
-        elem = self.driver.find_element_by_id('conda')
+        elem = self.driver.find_element_by_id('trusted_script')
         elem.click()
 
         elem = self.driver.find_element_by_xpath(
-            "//option[contains(text(), 'My Env')]")
+            "//option[contains(text(), 'my-env')]")
         elem.click()
 
-        elem = self.driver.find_element_by_id('select-conda-button')
+        elem = self.driver.find_element_by_id('select-trusted_script-button')
         elem.click()
 
         # make an API call to test it was set correctly
         elem = self.driver.find_element_by_id('current-entrypoint')
-        assert 'Conda: My Env' in elem.text
+        assert 'my-env' in elem.text
 
     def clear_entrypoint(self):
         elem = self.driver.find_element_by_id('clear-selection-button')
-        elem.click()
+        elem.submit()
+
+        import time
+        time.sleep(1)
 
         # check that the entrypoint was cleared
         elem = self.driver.find_element_by_id('current-entrypoint')
         assert elem.text == 'None'
 
     def delete_entrypoint(self):
-        elem = self.driver.find_element_by_id('conda')
+        elem = self.driver.find_element_by_id('trusted_script')
         elem.click()
 
         elem = self.driver.find_element_by_xpath(
-            "//option[contains(text(), 'My Env')]")
+            "//option[contains(text(), 'my-env')]")
         elem.click()
 
         elem = self.driver.find_element_by_xpath(
@@ -122,4 +130,4 @@ class Test():
         WebDriverWait(self.driver, 10).until(EC.alert_is_present())
         self.driver.switch_to.alert.accept()
 
-        # make an API call to test it was deleted correctly
+        # FIXME make an API call to test it was deleted correctly
