@@ -37,7 +37,7 @@ jobs:
 
       # Install python packages
       - run: pip install selenium
-      - run: pip install pytest
+      - run: pip install pytest-cov pytest-asyncio
 
       # Setup the config file
       - run: echo "c.JupyterHub.services=[{'name':'entrypoint','url':'http://127.0.0.1:8889','command':['python', '-m', 'jupyterhub_entrypoint'] }]" > jupyterhub_config.py
@@ -50,8 +50,10 @@ jobs:
 
       - run: cat jupyterhub_config.py
       - run: cat entrypoint_config.py
-      
+
+      - run: pytest --cov=jupyterhub_entrypoint/dbi -v tests/dbi
+
       # Start jupyterhub and run pytests
       - run: jupyterhub &
-      - run: pytest tests/test.py
+      - run: pytest -v tests/ui
       
