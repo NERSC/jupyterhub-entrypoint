@@ -259,9 +259,9 @@ class EntrypointType:
 class TrustedScriptEntrypointType(EntrypointType):
     """Entrypoint type based on scripts managed by an administrator.
 
-    This entrypoint type is configured with a list of script paths that users
-    may choose from, to use as entrypoints. These scripts should be managed by
-    the administrator or trusted designee.
+    This entrypoint type is configured with a list of absolute script paths
+    that users may choose from, to use as entrypoints. These scripts should be
+    managed by the administrator or trusted designee.
 
     This is a usable reference implementation of `EntrypointType`. It shows how
     the entrypoint command is formatted from entrypoint data, how basic
@@ -282,13 +282,13 @@ class TrustedScriptEntrypointType(EntrypointType):
         """Initialize the trusted script entrypoint type.
 
         Args:
-            *args (list): List of paths to trusted entrypoint scripts
+            *args (list): List of trusted entrypoint scripts
 
         """
 
         super().__init__()
-        self.script_paths = args
-        self.extend_schema({"path": {"type": "string"}})
+        self.scripts = args
+        self.extend_schema({"script": {"type": "string"}})
 
     def cmd(self, entrypoint_data):
         """Return replacement `Spawner.cmd` using the script entrypoint.
@@ -302,7 +302,7 @@ class TrustedScriptEntrypointType(EntrypointType):
         """
 
         return [
-            entrypoint_data["path"],
+            entrypoint_data["script"],
             "jupyter-labhub"
         ]
 
@@ -323,26 +323,111 @@ class TrustedScriptEntrypointType(EntrypointType):
         """
 
         content = dedent(f"""<select
+            name="script"
+            class="small-form form-control"
+        >
+        <option disabled selected value>-- select script --</option>
+        """)
+        for script in self.scripts:
+            content += f"<option>{script}</option>"
+        content += "</select>"
+
+        return content
+
+    async def validation_hook(self, entrypoint_data):
+        """Validate that the chosen script is in the list of scripts.
+
+        Raises:
+            EntrypointValidationError: If the script is unknown.
+
+        """
+
+        if entrypoint_data["script"] not in self.scripts:
+            raise EntrypointValidationError
+
+
+class TrustedPathEntrypointType(EntrypointType):
+    """Entrypoint type based on a path managed by an administrator.
+
+    This entrypoint type is configured with a list of directory paths that
+    users may choose from, to use as entrypoints. These paths should be managed
+    by the administrator or trusted designee.
+
+    This is a usable reference implementation of `EntrypointType`. It shows how
+    the entrypoint command is formatted from entrypoint data, how basic
+    validation via JSON schema is extended, how type and display names are
+    customized, how the form hook is used to extend the entrypoint management
+    form, and demonstrates extended server-side validation of user input.
+
+    Example: An entrypoint path could be the full absolute path to a bin
+    directory of a conda environment.
+
+    """
+
+    def __init__(self, *args):
+        """Initialize the trusted path entrypoint type.
+
+        Args:
+            *args (list): List of trusted directory paths
+
+        """
+
+        super().__init__()
+        self.paths = args
+        self.extend_schema({"path": {"type": "string"}})
+
+    def cmd(self, entrypoint_data):
+        """Return replacement `Spawner.cmd` using the script entrypoint.
+
+        Args:
+            entrypoint_data (dict): Entrypoint data
+
+        Returns:
+            list: Absolute path to the Jupyter executable
+
+        """
+
+        return [
+            os.path.join(entrypoint_data["path"], "jupyter-labhub")
+        ]
+
+    def get_type_name(self):
+        """Override default type name behavior."""
+        return "trusted_path"
+
+    def get_display_name(self):
+        """Override default display name behavior."""
+        return "trusted path"
+
+    async def form_hook(self):
+        """Extend form to include list of trusted paths.
+
+        Returns:
+            str: Form content for path select field
+
+        """
+
+        content = dedent(f"""<select
             name="path"
             class="small-form form-control"
         >
         <option disabled selected value>-- select path --</option>
         """)
-        for path in self.script_paths:
+        for path in self.paths:
             content += f"<option>{path}</option>"
         content += "</select>"
 
         return content
 
     async def validation_hook(self, entrypoint_data):
-        """Validate that the chosen path is in the list of script paths.
+        """Validate that the chosen path is in the list paths.
 
         Raises:
-            EntrypointValidationError: If the script path is unknown.
+            EntrypointValidationError: If the path is unknown.
 
         """
 
-        if entrypoint_data["path"] not in self.script_paths:
+        if entrypoint_data["path"] not in self.paths:
             raise EntrypointValidationError
 
 
