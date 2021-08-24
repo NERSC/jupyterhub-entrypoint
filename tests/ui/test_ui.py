@@ -75,7 +75,7 @@ class Test():
         name_input = self.driver.find_element_by_name('entrypoint_name')
         name_input.send_keys('my-env')
 
-        elem = self.driver.find_element_by_name('path')
+        elem = self.driver.find_element_by_name('script')
         elem.click()
 
         path_input = self.driver.find_element_by_xpath(
