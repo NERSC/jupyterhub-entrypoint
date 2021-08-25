@@ -166,7 +166,7 @@ class EntrypointService(Application, Configurable):
         # create SQLAlchemy engine and optionally initialize database FIXME parameterize
         engine = dbi.async_engine(
             f"sqlite+aiosqlite:///:memory:",
-            echo=True,
+#           echo=True,
             future=True
         )
 
