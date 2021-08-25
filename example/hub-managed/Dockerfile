@@ -17,7 +17,7 @@ ADD . src/jupyterhub-entrypoint
 RUN \
     cd src/jupyterhub-entrypoint                                    &&  \
     pip install --no-cache .                                        &&  \
-    cd example                                                      &&  \
+    cd example/hub-managed                                          &&  \
     cp example-entrypoint.sh /usr/local/bin/example-entrypoint.sh   &&  \
     chmod a+x /usr/local/bin/example-entrypoint.sh                  &&  \
     cp                                                                  \
@@ -25,8 +25,8 @@ RUN \
         entrypoint_config.py                                            \
         image-server.py                                                 \
         jupyterhub_config.py                                            \
-        ../../..                                                    &&  \
-    cd ../../..                                                     &&  \
+        ../../../..                                                 &&  \
+    cd ../../../..                                                  &&  \
     chmod u+x docker-entrypoint.sh
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
