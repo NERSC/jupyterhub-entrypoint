@@ -6,28 +6,32 @@
 #########################################################################
 
 import asyncio
+import logging
 import os
 import sys
-import logging
-from tornado import ioloop, web
+
 from jinja2 import FileSystemLoader
-
-from traitlets import Bool, Dict, Instance, Integer, List, Tuple, Type, Unicode, default, observe
-from traitlets.config import Application, Configurable
-
 from jupyterhub.log import CoroutineLogFormatter
-from jupyterhub.utils import url_path_join
 from jupyterhub._data import DATA_FILES_PATH
+from jupyterhub.utils import url_path_join
 from jupyterhub.handlers.static import LogoHandler
+from tornado.ioloop import IOLoop
+from tornado.web import Application, RedirectHandler, StaticFileHandler
+from traitlets import (
+    config, default, observe,
+    Bool, Dict, Instance, Integer, List, Tuple, Type, Unicode
+)
 
-from .ssl_context import SSLContext
-from .handlers import ViewHandler, EntrypointPostHandler, EntrypointDeleteHandler, SelectionHandler, HubSelectionHandler
-from .types import EntrypointType
-
+from jupyterhub_entrypoint.ssl_context import SSLContext
+from jupyterhub_entrypoint.handlers import (
+    ViewHandler, EntrypointPostHandler, EntrypointDeleteHandler, 
+    SelectionHandler, HubSelectionHandler
+)
+from jupyterhub_entrypoint.types import EntrypointType
 from jupyterhub_entrypoint import dbi
 
 
-class EntrypointService(Application, Configurable):
+class EntrypointService(config.Application, config.Configurable):
     """Configurable Tornado web application class that initializes request handlers"""
 
     flags = Dict({
@@ -45,6 +49,11 @@ class EntrypointService(Application, Configurable):
     config_file = Unicode(
         "entrypoint_config.py",
         help="Config file to load"
+    ).tag(config=True)
+
+    database_url = Unicode(
+        "sqlite+aiosqlite:///:memory:",
+        help="SQLAlchemy engine database URL"
     ).tag(config=True)
 
     data_files_path = Unicode(
@@ -124,9 +133,9 @@ class EntrypointService(Application, Configurable):
                 os.path.join(self.data_files_path, "templates"),
                 os.path.join(self.data_files_path, "entrypoint", "templates")]
 
-    tornado_logs = Bool(
+    verbose_sqlalchemy = Bool(
         False,
-        help="Determines whether tornado.access logs be included in stdout"
+        help="Turns on SQLAlchemy echo for verbose output"
     ).tag(config=True)
 
 
@@ -165,8 +174,8 @@ class EntrypointService(Application, Configurable):
 
         # create SQLAlchemy engine and optionally initialize database FIXME parameterize
         engine = dbi.async_engine(
-            f"sqlite+aiosqlite:///:memory:",
-#           echo=True,
+            self.database_url,
+            echo=self.verbose_sqlalchemy,
             future=True
         )
 
@@ -216,7 +225,7 @@ class EntrypointService(Application, Configurable):
 
         handler = (
             self.service_prefix,
-            web.RedirectHandler,
+            RedirectHandler,
             dict(url=self.service_prefix + self.default_tag_name)
         )
         handlers.append(handler)
@@ -258,14 +267,14 @@ class EntrypointService(Application, Configurable):
         handlers.append(handler)
 
         handlers += [
-            (self.service_prefix + r"static/(.*)", web.StaticFileHandler,
+            (self.service_prefix + r"static/(.*)", StaticFileHandler,
              {"path": self.settings["static_path"]}),
             (self.service_prefix + r"logo",
              LogoHandler, {"path": self.logo_file})
         ]
 
         # use the settings and handlers to create a Tornado web app
-        self.app = web.Application(handlers, **self.settings)
+        self.app = Application(handlers, **self.settings)
 
 
     _log_formatter_cls = CoroutineLogFormatter
@@ -315,7 +324,7 @@ class EntrypointService(Application, Configurable):
     # have the web app listen at the port set by the config
     def start(self):
         self.app.listen(self.port)
-        ioloop.IOLoop.current().start()
+        IOLoop.current().start()
 
 
 def main():
