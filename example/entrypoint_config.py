@@ -35,6 +35,10 @@
 #  Default: 'entrypoint_config.py'
 # c.EntrypointService.config_file = 'entrypoint_config.py'
 
+## SQLAlchemy engine database URL
+#  Default: 'sqlite+aiosqlite:///:memory:'
+# c.EntrypointService.database_url = 'sqlite+aiosqlite:///:memory:'
+
 ## Name of default tag, if unset, uses the first tag defined
 #  Default: ''
 # c.EntrypointService.default_tag_name = ''
@@ -97,10 +101,6 @@ c.EntrypointService.tags = [{
 #  Default: []
 # c.EntrypointService.template_paths = []
 
-## Determines whether tornado.access logs be included in stdout
-#  Default: False
-# c.EntrypointService.tornado_logs = False
-
 ## TBD
 #  Default: []
 # c.EntrypointService.types = []
@@ -111,3 +111,8 @@ c.EntrypointService.types = [(
     "jupyterhub_entrypoint.types.ShifterEntrypointType",
     ("http://127.0.0.1:8890/services/images/", "blah")
 )]
+
+## Turns on SQLAlchemy echo for verbose output
+#  Default: False
+# c.EntrypointService.verbose_sqlalchemy = False
+
