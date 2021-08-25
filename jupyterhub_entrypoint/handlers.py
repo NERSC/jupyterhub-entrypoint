@@ -199,14 +199,17 @@ class HubSelectionHandler(BaseHandler):
         """TBD"""
 
         if not self.validate_token():
-            self.write({})
+            raise web.HTTPError(403)
 
-        async with self.engine.begin() as conn:
-            entrypoint_data = await dbi.retrieve_selection(
-                conn, 
-                user, 
-                tag_name
-            )
+        try:
+            async with self.engine.begin() as conn:
+                entrypoint_data = await dbi.retrieve_selection(
+                    conn, 
+                    user, 
+                    tag_name
+                )
+        except ValueError:
+            raise web.HTTPError(404)
        
         cmd = list()
         for entrypoint_type in self.entrypoint_types:
