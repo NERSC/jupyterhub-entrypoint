@@ -11,7 +11,7 @@ async def engine():
         future=True
     )
     async with async_engine.begin() as conn:
-        await dbi.init_db(conn)
+        await dbi.init_db(conn, True)
     yield async_engine
     await async_engine.dispose()
 

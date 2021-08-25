@@ -28,6 +28,7 @@ from .tags import (
 def async_engine(*args, **kwargs):
     return create_async_engine(*args, **kwargs)
 
-async def init_db(conn):
-    await conn.run_sync(metadata.drop_all)
+async def init_db(conn, drop_all=False):
+    if drop_all:
+        await conn.run_sync(metadata.drop_all)
     await conn.run_sync(metadata.create_all)
