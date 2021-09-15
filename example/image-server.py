@@ -2,7 +2,7 @@
 from tornado.ioloop import IOLoop
 from tornado.web import Application, RequestHandler
 
-class MainHandler(RequestHandler):
+class ExampleImageHandler(RequestHandler):
 
     async def get(self):
         self.write({"images" : [
@@ -20,7 +20,7 @@ class MainHandler(RequestHandler):
 
 def main():
     app = Application([
-        ("/services/images/", MainHandler)
+        ("/services/images/", ExampleImageHandler)
     ])
     app.listen(8890, address="127.0.0.1")
     IOLoop.current().start() 
