@@ -1,0 +1,54 @@
+
+import os
+
+from tornado.escape import json_decode
+from tornado.httpclient import AsyncHTTPClient
+
+# For the demo, make it easy to get to the service
+
+c.JupyterHub.default_url = "/hub/home"
+
+# Run the entrypoint service, and the fake image server service
+
+c.JupyterHub.services = [{
+    "display": True,
+    "name": "entrypoint",
+    "command": ["python3", "-m", "jupyterhub_entrypoint"],
+    "url": "http://127.0.0.1:8889",
+    "environment": {
+        "ENTRYPOINT_API_TOKEN": os.environ["ENTRYPOINT_API_TOKEN"]
+    }
+}, {
+    "display": False,
+    "name": "images",
+    "command": ["python3", "./image-server.py"],
+    "url": "http://127.0.0.1:8890"
+}]
+
+# Set cmd to jupyter-labhub because it's awesome
+
+c.Spawner.cmd = ['jupyter-labhub']
+
+# Define pre-spawn hook to rewrite Spawner.cmd before start()
+# May need to look a bit different if options_form is defined!
+#
+# If there are multiple tags defined in the entrypoint service, the pre-spawn
+# hook needs to know how to figure out which one should be requested. One way
+# to do this would be to leverage named servers and read the "name" spawner
+# attribute.
+
+async def pre_spawn_hook(spawner):
+    user = spawner.user.name
+    client = AsyncHTTPClient()
+    try:
+        response = await client.fetch(
+            f"http://127.0.0.1:8889/services/entrypoint/api/hub/users/{user}/selections/hal",
+            headers={"Authorization": f"token {os.environ['ENTRYPOINT_API_TOKEN']}"}
+        )
+    except Exception as e:
+        spawner.log.error(f"{e}")
+    else:
+        data = json_decode(response.body)
+        spawner.cmd = data["cmd"]
+
+c.Spawner.pre_spawn_hook = pre_spawn_hook

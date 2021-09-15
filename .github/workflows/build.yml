@@ -20,11 +20,11 @@ jobs:
         run: |
           ls ${{ github.workspace }}
       
-      # Install node requirements and then install jupyter
+      # Install node requirements and then install jupyter, other packages
       - run: npm install
       - run: npm install -g configurable-http-proxy
       - run: python -m pip install -U jupyterhub jupyterlab jupyterhub-dummyauthenticator
-      - run: python -m pip install aiocache asyncssh
+      - run: python -m pip install aiosqlite
 
       # Install the extension and check that it installed correctly
       - run: pip install .
@@ -35,20 +35,25 @@ jobs:
       - run: sudo tar -xzf geckodriver-v0.26.0-linux64.tar.gz -C /usr/bin
       - run: sudo chmod a+x /usr/bin/geckodriver
 
-      # Install selenium and pytest
+      # Install python packages
       - run: pip install selenium
-      - run: pip install pytest
+      - run: pip install pytest-cov pytest-asyncio
 
       # Setup the config file
       - run: echo "c.JupyterHub.services=[{'name':'entrypoint','url':'http://127.0.0.1:8889','command':['python', '-m', 'jupyterhub_entrypoint'] }]" > jupyterhub_config.py
       - run: echo "c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'" >> jupyterhub_config.py
-      - run: echo "c.EntrypointService.systems=[{'name':'cori','display_name':'Cori','hostname':'cori'}]" >> entrypoint_config.py
-      - run: echo "c.EntrypointService.entrypoint_types = [{'name':'conda','display_name':'Conda','mutable':True,'cmd_template':'{path}/bin/jupyterlab-hub','help_link':''}]" >> entrypoint_config.py
+      - run: echo "c.EntrypointService.tags=[{'tag_name':'multivac','display_name':'Multivac'}]" >> entrypoint_config.py
+#     - run: echo "c.EntrypointService.entrypoint_types = [{'name':'conda','display_name':'Conda','mutable':True,'cmd_template':'{path}/bin/jupyterlab-hub','help_link':''}]" >> entrypoint_config.py
+      - run: echo "c.EntrypointService.types=[('jupyterhub_entrypoint.types.TrustedScriptEntrypointType', ('/usr/local/bin/example-entrypoint.sh',))]" >> entrypoint_config.py
+      - run: sudo echo 'exec "$@"' > /usr/local/bin/example-entrypoint.sh
+      - run: sudo chmod a+x /usr/local/bin/example-entrypoint.sh
 
       - run: cat jupyterhub_config.py
       - run: cat entrypoint_config.py
-      
+
+      - run: pytest --cov=jupyterhub_entrypoint/dbi -v tests/dbi
+
       # Start jupyterhub and run pytests
       - run: jupyterhub &
-      - run: pytest tests/test.py
+      - run: pytest -v tests/ui
       
