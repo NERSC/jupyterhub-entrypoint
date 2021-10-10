@@ -30,7 +30,8 @@ class EntrypointType:
     - cmd               implementation required
     - get_type_name     optional, default is based on class name
     - get_display_name  optional, default is get_type_name()
-    - form_hook         optional, coroutine
+    - get_description   optional, default is empty string
+    - get_options       optional, coroutine
     - validation_hook   optional, coroutine
 
     An `EntrypointType` has the following responsibilities:
@@ -58,7 +59,7 @@ class EntrypointType:
             "type": "object",
             "properties": {
                 "user": {"type": "string"},
-                "entrypoint_name": {"type": "string"},
+                "entrypoint_name": {"type": "string", "pattern": "^[a-z0-9.\-_]+$"},
                 "entrypoint_type": {"type": "string"},
             },
             "required": [
@@ -72,7 +73,7 @@ class EntrypointType:
         For example, to extend the schema to verify that a "path" field is
         included and has the right type, call this method this way:
 
-            self.extend_schema({"path": {"type": "string"}})
+            self.extend_schema([{"path": {"type": "string"}}])
 
         The specified properties will be added to the list of base entrypoint
         data properties, included as required properties, and the min/max
@@ -80,12 +81,13 @@ class EntrypointType:
         properties.
 
         Args:
-            properties (dict): JSON Schema property specification
+            properties (list): List of JSON Schema property specifications
 
         """
 
-        self.schema["properties"].update(properties)
-        self.schema["required"] += properties.keys()
+        for prop in properties:
+            self.schema["properties"].update(prop)
+            self.schema["required"].append(list(prop.keys())[0])
         self.schema["minProperties"] = len(self.schema["properties"])
         self.schema["maxProperties"] = self.schema["minProperties"]
 
@@ -99,31 +101,156 @@ class EntrypointType:
         """str: Human-readable rendering of entrypoint type"""
         return self.get_display_name()
 
-    async def form(self):
+    @property
+    def description(self):
+        """str: Description of entrypoint type"""
+        return self.get_description()
+
+    async def form(self, entrypoint_data=None):
         """Return entire HTML form for managing this type of entrypoint.
+
+        If the form is being used to update an entrypoint, then the old version
+        of the entrypoint data can be passed to populate the form.
+
+        Args:
+            entrypoint_data (dict): Old entrypoint data to update.
 
         Returns:
             str: HTML form for managing entrypoint
 
         """
-        content = self.form_input_name()
-        content += await self.form_hook()
+
+        content = ""
+        autofocus = True
+        for name in self.schema["required"]:
+            content += await self.form_group(name, entrypoint_data, autofocus)
+            autofocus = False
         return content
 
-    def form_input_name(self):
-        """Return required form element for managing entrypoint name.
+    async def get_options(self, name, prop):
+        """Dynamically determine options for select-type form inputs
+
+        Sometimes the list of options available for a select form input may
+        need to be determined dynamically, for instance, by querying an
+        external registry of container images. This method can be overridden
+        to provide that kind of logic.
+
+        This is a coroutine because validating entrypoint data may require
+        non-blocking interaction with external services.
+
+        Args:
+            name (string): Property name.
+            prop (dict): Property schema.
 
         Returns:
-            str: Input form control text for HTML form
+            list: List of options, or None if no options are appropriate
 
         """
 
-        return dedent(f"""<input
-            name="entrypoint_name"
-            class="form-control small-form"
+        return prop.get("enum")
+
+    async def form_group(self, name, entrypoint_data, autofocus):
+        """Render a form group element
+
+        Form elements are either selects or inputs and that's it for now.
+
+        Args:
+            name (str): Property name.
+            entrypoint_data (dict): Old entrypoint data for update.
+            autofocus (bool): Whether the element should have autofocus.
+
+        Returns:
+            str: HTML form group element
+
+        """
+
+        if name in ["user", "entrypoint_type"]:
+            return ""
+        prop = self.schema["properties"][name]
+        options = await self.get_options(name, prop)
+        if options:
+            return self.form_select(name, options, entrypoint_data, autofocus)
+        else:
+            return self.form_input(name, entrypoint_data, autofocus)
+
+    def form_select(self, name, options, entrypoint_data, autofocus):
+        """Render a form select element
+
+        Args:
+            name (str): Property name.
+            options (list): Options to present.
+            entrypoint_data (dict): Current entrypoint data or None.
+            autofocus (bool): Whether the element should have autofocus.
+
+        Returns:
+            str: HTML form select element
+
+        """
+
+        value = ""
+        if entrypoint_data:
+            value = entrypoint_data[name]
+
+        content = dedent(f"""\
+        <div class="form-group">
+          <label for="{name}">{name}:</label>
+          <select
+            class="form-control"
+            name="{name}"
+            required
+            {"autofocus" if autofocus else ""}
+          >
+        """)
+        if value:
+            if value not in options:
+                content += dedent(f"""\
+                  <option disabled selected value>{value}</option>
+                """)
+        else:
+            content += dedent(f"""\
+              <option disabled selected value>-- choose --</option>
+            """)
+        for option in options:
+            if value and value == option:
+                content += f"  <option selected>{option}</option>"
+            else:
+                content += f"  <option>{option}</option>"
+        content += dedent(f"""\
+          </select>
+        </div>
+        """)
+        return content
+
+    def form_input(self, name, entrypoint_data, autofocus):
+        """Render a form input element
+
+        Args:
+            name (str): Property name.
+            entrypoint_data (dict): Current entrypoint data or None.
+            autofocus (bool): Whether the element should have autofocus.
+
+        Returns:
+            str: HTML form input element
+
+        """
+
+        value = ""
+        if entrypoint_data:
+            value = entrypoint_data[name]
+
+        return dedent(f"""\
+        <div class="form-group">
+          <label for="{name}">{name}:</label>
+          <input 
+            class="form-control" 
+            name="{name}" 
+            required
+            {"autofocus" if autofocus else ""}
             autocomplete="off"
-            placeholder="New {self.display_name} entrypoint name"
-        >""")
+            value="{value}"
+          >
+        </div>
+        """)
 
     async def validate(self, entrypoint_data):
         """Validate entrypoint data, both basic and extended by hook."""
@@ -197,25 +324,17 @@ class EntrypointType:
 
         return self.get_type_name()
 
-    async def form_hook(self):
-        """Return form elements needed to manage an entrypoint type.
+    def get_description(self):
+        """Render a description of the entrypoint type.
 
-        Most entrypoint type subclasses have elements that need to be managed
-        or configured when an entrypoint is being added or updated. Subclasses
-        must provide an implementation of this method to provide the required
-        form elements. By default, this methods just returns an empty string.
+        By default this just returns the empty string, but can be used to
+        explain what the entrypoint type is for and how to use it during
+        template rendering.
 
-        This is a coroutine because rendering the form may require non-blocking
-        interaction with external services. For instance, a registry service
-        that describes suitable Docker containers to choose from in a select
-        list.
-
-        Called by the `form` method when the entrypoint type form is rendered.
-        The `form` method provides a "name" input element that is required for
-        all entrypoint types.
+        This is used by the `description` property during templating.
 
         Returns:
-            str: Form elements needed to manage an entrypoint type
+            str: Description of entrypoint type
 
         """
 
@@ -265,9 +384,8 @@ class TrustedScriptEntrypointType(EntrypointType):
 
     This is a usable reference implementation of `EntrypointType`. It shows how
     the entrypoint command is formatted from entrypoint data, how basic
-    validation via JSON schema is extended, how type and display names are
-    customized, how the form hook is used to extend the entrypoint management
-    form, and demonstrates extended server-side validation of user input.
+    validation via JSON schema is extended, and how type and display names are
+    customized.
 
     An entrypoint script in this case might look like:
 
@@ -287,8 +405,7 @@ class TrustedScriptEntrypointType(EntrypointType):
         """
 
         super().__init__()
-        self.scripts = args
-        self.extend_schema({"script": {"type": "string"}})
+        self.extend_schema([{"script": {"type": "string", "enum": list(args)}}])
 
     def cmd(self, entrypoint_data):
         """Return replacement `Spawner.cmd` using the script entrypoint.
@@ -314,36 +431,13 @@ class TrustedScriptEntrypointType(EntrypointType):
         """Override default display name behavior."""
         return "trusted script"
 
-    async def form_hook(self):
-        """Extend form to include list of trusted entrypoint scripts.
+    def get_description(self):
+        """Override default description behavior."""
 
-        Returns:
-            str: Form content for script select field
-
-        """
-
-        content = dedent(f"""<select
-            name="script"
-            class="small-form form-control"
-        >
-        <option disabled selected value>-- select script --</option>
+        return dedent("""
+            Start a Jupyter notebook server using a staff-managed, pre-defined 
+            configuration implemented in a wrapper script.
         """)
-        for script in self.scripts:
-            content += f"<option>{script}</option>"
-        content += "</select>"
-
-        return content
-
-    async def validation_hook(self, entrypoint_data):
-        """Validate that the chosen script is in the list of scripts.
-
-        Raises:
-            EntrypointValidationError: If the script is unknown.
-
-        """
-
-        if entrypoint_data["script"] not in self.scripts:
-            raise EntrypointValidationError
 
 
 class TrustedPathEntrypointType(EntrypointType):
@@ -355,9 +449,8 @@ class TrustedPathEntrypointType(EntrypointType):
 
     This is a usable reference implementation of `EntrypointType`. It shows how
     the entrypoint command is formatted from entrypoint data, how basic
-    validation via JSON schema is extended, how type and display names are
-    customized, how the form hook is used to extend the entrypoint management
-    form, and demonstrates extended server-side validation of user input.
+    validation via JSON schema is extended, and how type and display names are
+    customized.
 
     Example: An entrypoint path could be the full absolute path to a bin
     directory of a conda environment.
@@ -373,8 +466,7 @@ class TrustedPathEntrypointType(EntrypointType):
         """
 
         super().__init__()
-        self.paths = args
-        self.extend_schema({"path": {"type": "string"}})
+        self.extend_schema([{"path": {"type": "string", "enum": list(args)}}])
 
     def cmd(self, entrypoint_data):
         """Return replacement `Spawner.cmd` using the script entrypoint.
@@ -399,36 +491,13 @@ class TrustedPathEntrypointType(EntrypointType):
         """Override default display name behavior."""
         return "trusted path"
 
-    async def form_hook(self):
-        """Extend form to include list of trusted paths.
+    def get_description(self):
+        """Override default description behavior."""
 
-        Returns:
-            str: Form content for path select field
-
-        """
-
-        content = dedent(f"""<select
-            name="path"
-            class="small-form form-control"
-        >
-        <option disabled selected value>-- select path --</option>
+        return dedent("""
+            Start a Jupyter notebook server using a staff-managed, pre-defined 
+            absolute path to the "jupyter" executable.
         """)
-        for path in self.paths:
-            content += f"<option>{path}</option>"
-        content += "</select>"
-
-        return content
-
-    async def validation_hook(self, entrypoint_data):
-        """Validate that the chosen path is in the list paths.
-
-        Raises:
-            EntrypointValidationError: If the path is unknown.
-
-        """
-
-        if entrypoint_data["path"] not in self.paths:
-            raise EntrypointValidationError
 
 
 class ShifterEntrypointType(EntrypointType):
@@ -441,8 +510,8 @@ class ShifterEntrypointType(EntrypointType):
 
     A usable reference implementation of `EntrypointType`, this class shows all
     the same kinds of customizations as `TrustedScriptEntrypointType`, but it
-    includes a non-blocking call to an external service during both form and
-    validation hook execution.
+    includes a non-blocking call to an external service during both form
+    building and validation hook execution.
 
     """
 
@@ -460,7 +529,7 @@ class ShifterEntrypointType(EntrypointType):
         self.shifter_api_token = (
             shifter_api_token or os.environ["SHIFTER_API_TOKEN"]
         )
-        self.extend_schema({"image": {"type": "string"}})
+        self.extend_schema([{"image": {"type": "string"}}])
 
     def cmd(self, entrypoint_data):
         """Return replacement `Spawner.cmd` using a Shifter entrypoint.
@@ -479,31 +548,28 @@ class ShifterEntrypointType(EntrypointType):
             "jupyter-labhub"
         ]
 
-    async def form_hook(self):
-        """Extend form to include list of Shifter images.
+    def get_description(self):
+        """Override default description behavior."""
+
+        return dedent("""
+            Start a Jupyter notebook server using a Shifter image loaded on the
+            target system.
+        """)
+
+    async def get_options(self, name, prop):
+        """Get images from the Shifter image service to present as options
+
+        Args:
+            name (string): Property name.
+            prop (dict): Property schema.
 
         Returns:
-            str: Form content for image select field
+            list: List of images.
 
         """
 
-        try:
-            images = await self.get_images()
-            message = "select image"
-        except:
-            images = list()
-            message = "image lookup failed, try later"
-        content = dedent(f"""<select
-            name="image"
-            class="small-form form-control entrypoint-data"
-        >
-        <option disabled selected value>-- {message} --</option>
-        """)
-        for image in images:
-            content += f"<option>{image}</option>"
-        content += "</select>"
-
-        return content
+        if name == "image":
+            return await self.get_images()
 
     async def validation_hook(self, entrypoint_data):
         """Validate that the chosen image is known to Shifter.

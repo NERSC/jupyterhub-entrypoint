@@ -3,12 +3,14 @@
 
 <div class="container">
 
-  <!-- Title -->  
+  <!-- Title -->
   <div class="row">
     <div class="col-md-offset-2 col-md-8">
       <div class="text-center title">
-        <h2 id="title">JupyterHub Entrypoint Service</h2>
-        <h5>Launch Jupyter notebook servers in custom environments</h5>
+        <h1 id="title">
+          JupyterHub Entrypoint Service<br/>
+          <small>Launch Jupyter notebook servers in custom environments</small>
+        </h1>
       </div>
     </div>
   </div>
@@ -30,126 +32,90 @@
     </div>
   </div>
 
-  <!-- displays current entrypoint, modified by script block -->
+  <!-- No entrypoint -->
   <div class="row">
     <div class="col-md-offset-2 col-md-8">
-      <dl>
-        <dt>Selected entrypoint for {{tag_name}}:</dt>
-        <dd id="current-entrypoint">
-        {% if selection %}
-          {{selection.entrypoint_data.entrypoint_name}} ({{selection.entrypoint_data.entrypoint_type}})
-        {% else %}
-          <em>None</em>
-        {% endif %}
-        </dd>
-        <form id="clear-selection">
+      <h2>No Entrypoint</h2>
+      <p class="lead">Uses JupyterHub's configuration to start your notebook server.</p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-offset-2 col-md-8">
+      <h3>
+        <label>
           {% if selection %}
-          <button id="clear-selection-button" type="submit" class="btn btn-jupyter clear-button">
+          <input type="radio" value="" name="selected_entrypoint">
           {% else %}
-          <button id="clear-selection-button" type="submit" class="btn btn-jupyter clear-button" disabled>
+          <input type="radio" value="" name="selected_entrypoint" checked>
           {% endif %}
-            Clear current entrypoint
-          </button>
-        </form>
-      </dl>
+          (None)
+        </label>
+      </h3>
     </div>
   </div>
 
-  <!-- row for managing each entrypoint type -->
+  <!-- Group entrypoints by type -->
   {% for entrypoint_type in entrypoint_types %}
   {% set type_name = entrypoint_type.type_name %}
   {% set display_name = entrypoint_type.display_name %}
+  {% set description = entrypoint_type.description %}
   <div class="row">
-    <div class="update-entrypoint col-md-offset-2 col-md-8">
-      <h4>Manage {{display_name}} entrypoints</h4>
-      <div class="form-group">
-        <div class="input-group">
-
-          <!-- dropdown to select entrypoint to manipulate -->
-          <select id="{{type_name}}" name="{{type_name}}" class="form-control">
-            <option disabled selected value>
-                -- select or manage an entrypoint --
-            </option>
-            {% for entrypoint in entrypoints[type_name] %}
-            <option>{{entrypoint.entrypoint_data.entrypoint_name}}</option>
-            {% endfor %}
-          </select>
-
-          <!-- select, delete, add entrypoints -->
-          <span class="input-group-btn">
-            <button id="select-{{type_name}}-button" type="button" onclick="selectHandler('{{type_name}}')"
-                class="row-button btn btn-jupyter">select</button>
-            <button id="add-{{type_name}}-button" type="button" class="row-button btn btn-jupyter" data-toggle="modal"
-                data-target="#add-{{type_name}}-modal">
-                add
-            </button>
-            <button id="delete-{{type_name}}-button" type="button" onclick="deleteHandler('{{type_name}}')" class="row-button btn btn-jupyter">
-                delete
-            </button>
-
-          </span>
-        </div>
-      </div>
+    <div class="col-md-offset-2 col-md-8">
+      <hr>
+      <h2>
+        {{display_name | title}} Entrypoints
+        <a class="btn btn-primary pull-right" href="{{service_prefix}}{{tag_name}}/new/{{type_name}}" type="button">new</a>
+      </h2>
+      {% if description %}
+      <p class="lead">{{description}}</p>
+      {% endif %}
     </div>
   </div>
-
-  <!-- tag should be a thing so we can get its display name -->
-  <!-- type should in some places be a display name -->
-  <!-- modal for adding entrypoints -->
-  <div class="modal fade" id="add-{{type_name}}-modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
-
-        <!-- modal header: title -->
-        <div class="modal-header">
-          <h4 class="modal-title" id="add-{{type_name}}-modal-title">
-            Add a new {{display_name}} entrypoint for {{tag_name}}
-          </h4>
-        </div>
-
-        <!-- modal body: input, select for entrypoint data; tag checkboxes -->
-        <div class="modal-body">
-          <div id="add-{{type_name}}" class="add-entrypoint col-md-offset-2 col-md-8">
-            <div class="form-group">
-              <div class="input-group" id="testing-{{type_name}}">
-
-                <!-- input, select elements for entrypoint data -->
-                {{ entrypoint_type.form() }}
-
-                <!-- checkboxes for tagging -->
-                <p class="no-margin form-text"><b>Additional tags:</b></p>
-                {% for tag in tags %}
-                {% if tag.tag_name != tag_name %}
-                <input type="checkbox" class="tag-checkbox" value="{{tag.tag_name}}">
-                <label class="checkbox-label" for="{{tag.tag_name}}">
-                  {{tag.display_name}}
-                </label>
-                {% endif %}
-                {% endfor %}
-              </div>
-            </div>
-            <!-- where to show messages if necessary -->
-            <div>
-              <small id="{{type_name}}-error-msg" class="form-text text-muted error note"></small>
-              <small id="{{type_name}}-msg" class="form-text text-muted note"></small>
-            </div>
-          </div>
-        </div>
-
-        <!-- modal footer: cancel and add buttons -->
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" onclick="addHandler('{{type_name}}')">
-              Add entrypoint
+  {% for entrypoint in entrypoints[type_name] %}
+  <div class="row">
+    <div class="col-md-offset-2 col-md-8">
+      <h3>
+        <label>
+          {% if selection and selection.entrypoint_data.entrypoint_name == entrypoint.entrypoint_data.entrypoint_name %}
+          <input type="radio" value="{{entrypoint.entrypoint_data.entrypoint_name}}" name="selected_entrypoint" checked>
+          {% else %}
+          <input type="radio" value="{{entrypoint.entrypoint_data.entrypoint_name}}" name="selected_entrypoint">
+          {% endif %}
+          {{entrypoint.entrypoint_data.entrypoint_name}}
+        </label>
+        <span class="pull-right">
+          <a class="btn btn-primary" href="{{service_prefix}}{{tag_name}}/update/{{type_name}}/{{entrypoint.entrypoint_data.entrypoint_name}}" type="button">
+            update
+          </a>
+          <button type="button" onclick="deleteEntrypoint('{{entrypoint.entrypoint_data.entrypoint_name}}')" class="btn btn-danger">
+            delete
           </button>
-        </div>
-      </div>
+        </span>
+      </h3>
     </div>
   </div>
+  <div class="row">
+    <div class="col-md-offset-2 col-md-10">
+      <dl>
+        {% for key in entrypoint.entrypoint_data | sort | reject("in", ["entrypoint_name", "entrypoint_type", "user"]) %}
+        <dt>{{key}}</dt>
+        <dd>{{entrypoint.entrypoint_data[key]}}</dd>
+        {% endfor %}
+      </dl>
+    </div>
+  </div>
+  {% else %}
+  <div class="row">
+    <div class="col-md-offset-2 col-md-10">
+        <em>No {{display_name}} entrypoints configured, click "new" to add one.</em>
+    </div>
+  </div>
+  {% endfor %}
   {% endfor %}
 </div>
 
 <style scoped>
+/*
     .row-button {
         margin-left: 4px !important;
     }
@@ -167,7 +133,6 @@
         margin-top: 10px;
     }
 
-    /* Style the tab */
     .selection-buttons {
         padding: 10px !important;
         min-width: 85px;
@@ -185,7 +150,6 @@
         margin-bottom: 20px;
     }
 
-    /* Style the buttons that are used to open the tab content */
     .tab button {
         background-color: inherit;
         float: left;
@@ -205,16 +169,15 @@
         transition: 0.3s;
     }
 
-    /* Change background color of buttons on hover */
     .tab button:hover {
         background-color: #ddd;
     }
 
-    /* Create an active/current tablink class */
     .tab button.active {
         background-color: #ccc;
     }
-
+*/
+/*
     dl {
         margin-bottom: 0px;
     }
@@ -270,9 +233,39 @@
     .note {
         padding-left: 3px;
     }
+*/
 </style>
 
 <script type="text/javascript">
+
+$("input[name='selected_entrypoint']").change(function(event) {
+    event.preventDefault();
+    const selected_entrypoint = $(this).val();
+    if (selected_entrypoint) {
+        $.ajax({
+            method: "PUT",
+            url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/${selected_entrypoint}/tags/{{tag_name}}`,
+            data: JSON.stringify({}),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+        }).always(function() {
+            location.reload(true);
+        });
+    } 
+    else {
+        {% if selection %}
+        $.ajax({
+            method: "DELETE",
+            url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/{{selection.entrypoint_data.entrypoint_name}}/tags/{{tag_name}}`,
+            data: JSON.stringify({}),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+        }).always(function () {
+            location.reload(true);
+        });
+        {% endif %}
+    }
+});
 
 // Delete user entrypoint selection and reload
 
@@ -316,8 +309,7 @@ async function selectEntrypoint(entrypoint_name) {
 
 // Collect user entrypoint name and call deleteEntrypoint()
 
-async function deleteHandler(entrypoint_type) {
-    const entrypoint_name = $(`#${entrypoint_type}`).val();
+async function deleteHandler(entrypoint_name) {
     if (entrypoint_name !== null) {
         if (confirm(`Are you sure you want to delete entrypoint "${entrypoint_name}"?\nThis will remove it for all tags.`)) {
             const result = await deleteEntrypoint(entrypoint_name);
@@ -329,14 +321,16 @@ async function deleteHandler(entrypoint_type) {
 // Delete user entrypoint
 
 async function deleteEntrypoint(entrypoint_name) {
-    const response = await $.ajax({
-        method: "DELETE",
-        url: `/services/entrypoint/api/mgmt/users/{{user.name}}/entrypoints/${entrypoint_name}`,
-        data: JSON.stringify({}),
-        contentType: "application/json; charset=utf-8",
-        dataType: "json",
-    });
-    return response.result;
+    if (confirm(`Are you sure you want to delete entrypoint "${entrypoint_name}"?\nThis will remove it for all tags.`)) {
+        const response = await $.ajax({
+            method: "DELETE",
+            url: `/services/entrypoint/api/mgmt/users/{{user.name}}/entrypoints/${entrypoint_name}`,
+            data: JSON.stringify({}),
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+        });
+        location.reload();
+    }
 }
 
 // Collect new user entrypoint data and call addEntrypoint()
