@@ -88,6 +88,83 @@ class ViewHandler(HubAuthenticated, BaseHandler):
         self.write(chunk)
 
 
+class NewHandler(HubAuthenticated, BaseHandler):
+
+    def initialize(self, tag, entrypoint_type, loader):
+        """TBD"""
+
+        super().initialize()
+        self.tag = tag
+        self.entrypoint_type = entrypoint_type
+        self.loader = loader
+        self.env = Environment(loader=self.loader, enable_async=True)
+        self.template_manage = self.env.get_template("manage.html")
+
+    @web.authenticated
+    async def get(self):
+
+        user = self.get_current_user()
+        hub_auth = self.hub_auth
+        base_url = hub_auth.hub_prefix
+        chunk = await self.template_manage.render_async(
+            base_url=base_url,
+            login_url=hub_auth.login_url,
+            logout_url=url_path_join(base_url, "logout"),
+            no_spawner_check=True,
+            service_prefix=self.settings["service_prefix"],
+            static_url=self.static_url,
+            user=user, 
+            entrypoint_type=self.entrypoint_type,
+            tag_name=self.tag["tag_name"],
+            tags=self.settings["tags"],
+            entrypoint_data=None
+        )
+        self.write(chunk)
+
+
+class UpdateHandler(HubAuthenticated, BaseHandler):
+
+    def initialize(self, tag, entrypoint_type, loader):
+        """TBD"""
+
+        super().initialize()
+        self.tag = tag
+        self.entrypoint_type = entrypoint_type
+        self.loader = loader
+        self.env = Environment(loader=self.loader, enable_async=True)
+        self.template_manage = self.env.get_template("manage.html")
+
+    @web.authenticated
+    async def get(self, entrypoint_name):
+
+        user = self.get_current_user()
+        username = user["name"]
+        hub_auth = self.hub_auth
+        base_url = hub_auth.hub_prefix
+
+        async with self.engine.begin() as conn:
+            result = await dbi.retrieve_one_entrypoint(
+                conn, username, entrypoint_name
+            ) # tag_names is paused but should also pass through
+        entrypoint_data = result["entrypoint_data"]
+        tag_names = result["tag_names"]
+
+        chunk = await self.template_manage.render_async(
+            base_url=base_url,
+            login_url=hub_auth.login_url,
+            logout_url=url_path_join(base_url, "logout"),
+            no_spawner_check=True,
+            service_prefix=self.settings["service_prefix"],
+            static_url=self.static_url,
+            user=user, 
+            entrypoint_type=self.entrypoint_type,
+            tag_name=self.tag["tag_name"],
+            tags=self.settings["tags"],
+            entrypoint_data=entrypoint_data
+        )
+        self.write(chunk)
+
+
 class EntrypointHandler(HubAuthenticated, BaseHandler):
     """TBD"""
     pass
@@ -120,6 +197,33 @@ class EntrypointPostHandler(EntrypointHandler):
                 )
 
             self.write({"result": True, "message": "Entrypoint added"})
+        except EntrypointValidationError:
+            self.log.error(f"Validation error: {entrypoint_data}")
+            self.write({"result": False, "message": "Validation error"})
+        except Exception as e:
+            self.log.error(f"Error ({e}): {entrypoint_data}")
+            # Types of errors may need a bit more elaboration (like unique names)
+            self.write({"result": False, "message": "Error"})
+
+    @web.authenticated
+    async def put(self, user):
+        """TBD"""
+
+        try:
+            payload = json_decode(self.request.body)
+            entrypoint_data = payload["entrypoint_data"]
+            await self.validate(user, entrypoint_data)
+            async with self.engine.begin() as conn:
+                await dbi.update_entrypoint(
+                    conn,
+                    user,
+                    entrypoint_data["entrypoint_name"],
+                    entrypoint_data["entrypoint_type"],
+                    entrypoint_data,
+#                   payload["tag_names"] FIXME should be able to change this too
+                )
+
+            self.write({"result": True, "message": "Entrypoint updated"})
         except EntrypointValidationError:
             self.log.error(f"Validation error: {entrypoint_data}")
             self.write({"result": False, "message": "Validation error"})
