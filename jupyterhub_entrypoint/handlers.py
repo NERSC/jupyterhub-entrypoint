@@ -329,3 +329,33 @@ class HubSelectionHandler(BaseHandler):
             self.request.headers["Authorization"] ==
             f"token {self.entrypoint_api_token}"
         )
+
+class AboutHandler(HubAuthenticated, BaseHandler):
+    """TBD"""
+
+    def initialize(self, loader):
+        """TBD"""
+
+        super().initialize()
+        self.loader = loader
+        self.env = Environment(loader=self.loader, enable_async=True)
+        self.template_about = self.env.get_template("about.html")
+
+    @web.authenticated
+    async def get(self):
+        """TBD"""
+
+        user = self.get_current_user()
+        hub_auth = self.hub_auth
+        base_url = hub_auth.hub_prefix
+
+        chunk = await self.template_about.render_async(
+            base_url=base_url,
+            login_url=hub_auth.login_url,
+            logout_url=url_path_join(base_url, "logout"),
+            no_spawner_check=True,
+            service_prefix=self.settings["service_prefix"],
+            static_url=self.static_url,
+            user=user, 
+        )
+        self.write(chunk)

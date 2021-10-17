@@ -7,10 +7,12 @@
   <div class="row">
     <div class="col-md-offset-2 col-md-8">
       <div class="text-center title">
-        <h1 id="title">
-          JupyterHub Entrypoint Service<br/>
-          <small>Launch Jupyter notebook servers in custom environments</small>
-        </h1>
+        <h2 id="title">
+          JupyterHub Entrypoints<br>
+          <small>
+            Manage your list of JupyterHub entrypoints and select a favorite.
+          </small>
+        </h2>
       </div>
     </div>
   </div>
@@ -24,7 +26,7 @@
           {% if tag.tag_name == tag_name %}
           <a class="btn btn-default active" href="#" role="button">{{tag.display_name}}</a>
           {% else %}
-          <a class="btn btn-default" href="{{service_prefix}}{{tag.tag_name}}" role="button">{{tag.display_name}}</a>
+          <a class="btn btn-default" href="{{service_prefix}}{{tag.tag_name}}/select" role="button">{{tag.display_name}}</a>
           {% endif %}
           {% endfor %}
         </div>
@@ -32,16 +34,49 @@
     </div>
   </div>
 
+  <!-- Favorite entrypoint -->
+  <div class="row">
+    <div class="col-md-offset-2 col-md-8">
+      <div class="text-center">
+        <h3>
+          Favorite Entrypoint<br>
+          <small>
+            {% if selection %}
+            {{selection.entrypoint_data.entrypoint_name}}
+            {% else %}
+            None
+            {% endif %}
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- List of entrypoints -->
+  <div class="row">
+    <div class="col-md-offset-2 col-md-8">
+      <div class="text-center">
+        <h3>
+          Your Entrypoint List<br>
+          <small>
+            <a href="{{service_prefix}}about">Learn more about managing your entrypoints...</a>
+          </small>
+        </h3>
+      </div>
+    </div>
+  </div>
+
   <!-- No entrypoint -->
   <div class="row">
     <div class="col-md-offset-2 col-md-8">
-      <h2>No Entrypoint</h2>
-      <p class="lead">Uses JupyterHub's configuration to start your notebook server.</p>
+      <hr>
+      <h4>No Entrypoint</h4>
+      <p>Select this if you just want to use JupyterHub's notebook server configuration as default.</p>
     </div>
   </div>
   <div class="row">
     <div class="col-md-offset-2 col-md-8">
-      <h3>
+      <h4>
         <label>
           {% if selection %}
           <input type="radio" value="" name="selected_entrypoint">
@@ -50,7 +85,7 @@
           {% endif %}
           (None)
         </label>
-      </h3>
+      </h4>
     </div>
   </div>
 
@@ -62,19 +97,19 @@
   <div class="row">
     <div class="col-md-offset-2 col-md-8">
       <hr>
-      <h2>
+      <h4>
         {{display_name | title}} Entrypoints
-        <a class="btn btn-primary pull-right" href="{{service_prefix}}{{tag_name}}/new/{{type_name}}" type="button">new</a>
-      </h2>
+        <a class="btn btn-primary btn-sm pull-right" href="{{service_prefix}}{{tag_name}}/new/{{type_name}}" type="button">create</a>
+      </h4>
       {% if description %}
-      <p class="lead">{{description}}</p>
+      <p>{{description}}</p>
       {% endif %}
     </div>
   </div>
   {% for entrypoint in entrypoints[type_name] %}
   <div class="row">
     <div class="col-md-offset-2 col-md-8">
-      <h3>
+      <h4>
         <label>
           {% if selection and selection.entrypoint_data.entrypoint_name == entrypoint.entrypoint_data.entrypoint_name %}
           <input type="radio" value="{{entrypoint.entrypoint_data.entrypoint_name}}" name="selected_entrypoint" checked>
@@ -84,14 +119,14 @@
           {{entrypoint.entrypoint_data.entrypoint_name}}
         </label>
         <span class="pull-right">
-          <a class="btn btn-primary" href="{{service_prefix}}{{tag_name}}/update/{{type_name}}/{{entrypoint.entrypoint_data.entrypoint_name}}" type="button">
+          <a class="btn btn-primary btn-sm" href="{{service_prefix}}{{tag_name}}/update/{{type_name}}/{{entrypoint.entrypoint_data.entrypoint_name}}" type="button">
             update
           </a>
-          <button type="button" onclick="deleteEntrypoint('{{entrypoint.entrypoint_data.entrypoint_name}}')" class="btn btn-danger">
+          <button type="button" onclick="deleteEntrypoint('{{entrypoint.entrypoint_data.entrypoint_name}}')" class="btn btn-danger btn-sm">
             delete
           </button>
         </span>
-      </h3>
+      </h4>
     </div>
   </div>
   <div class="row">
@@ -107,7 +142,7 @@
   {% else %}
   <div class="row">
     <div class="col-md-offset-2 col-md-10">
-        <em>No {{display_name}} entrypoints configured, click "new" to add one.</em>
+        <em>No {{display_name}} entrypoints to list. Click "create" to configure and add one.</em>
     </div>
   </div>
   {% endfor %}

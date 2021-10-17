@@ -24,8 +24,9 @@ from traitlets import (
 
 from jupyterhub_entrypoint.ssl_context import SSLContext
 from jupyterhub_entrypoint.handlers import (
-    NewHandler, ViewHandler, UpdateHandler, EntrypointPostHandler,
-    EntrypointDeleteHandler, SelectionHandler, HubSelectionHandler
+    AboutHandler, NewHandler, ViewHandler, UpdateHandler,
+    EntrypointPostHandler, EntrypointDeleteHandler, SelectionHandler,
+    HubSelectionHandler
 )
 from jupyterhub_entrypoint.types import EntrypointType
 from jupyterhub_entrypoint import dbi
@@ -112,7 +113,7 @@ class EntrypointService(config.Application, config.Configurable):
     ).tag(config=True)
 
     types = List(
-        Tuple(Type(), Tuple()),
+        Tuple(Type(), List()),
         help="TBD"
     ).tag(config=True)
 
@@ -255,6 +256,13 @@ class EntrypointService(config.Application, config.Configurable):
                     )
                 )
                 handlers.append(handler)
+
+        handler = (
+            self.service_prefix + "about",
+            AboutHandler,
+            dict(loader=loader)
+        )
+        handlers.append(handler)
 
         # Entrypoint API delete handler
 
