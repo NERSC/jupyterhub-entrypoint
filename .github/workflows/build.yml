@@ -53,7 +53,7 @@ jobs:
 
       - run: pytest --cov=jupyterhub_entrypoint/dbi -v tests/dbi
 
-      # Start jupyterhub and run pytests
-      - run: jupyterhub &
-      - run: pytest -v tests/ui
+#     # Start jupyterhub and run pytests
+#     - run: jupyterhub &
+#     - run: pytest -v tests/ui
       
