@@ -106,10 +106,10 @@ c.EntrypointService.tags = [{
 # c.EntrypointService.types = []
 c.EntrypointService.types = [(
     "jupyterhub_entrypoint.types.TrustedScriptEntrypointType",
-    ("/usr/local/bin/example-entrypoint.sh",),
+    ["/usr/local/bin/example-entrypoint.sh"],
 ), (
     "jupyterhub_entrypoint.types.ShifterEntrypointType",
-    ("http://127.0.0.1:8890/services/images/", "blah")
+    ["http://127.0.0.1:8890/services/images/", "blah"]
 )]
 
 ## Turns on SQLAlchemy echo for verbose output

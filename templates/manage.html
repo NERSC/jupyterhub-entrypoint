@@ -1,0 +1,167 @@
+{% extends "page.html" %}
+{% block main %}
+
+<div class="container">
+
+  <div class="row">
+    <div class="col-md-offset-2 col-md-8">
+      <div class="text-center title">
+        <h1 id="title">
+          JupyterHub Entrypoint Service<br/>
+          <small>Launch Jupyter notebook servers in custom environments</small>
+        </h1>
+      </div>
+    </div>
+  </div>
+
+  <div class="row text-center">
+    <div class="col-md-offset-2 col-md-8">
+      <h2>New {{entrypoint_type.display_name}} entrypoint for {{tag_name}}</h2>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8 col-md-offset-2">
+      <form id="form">
+
+        <!-- input, select elements for entrypoint data -->
+        {{ entrypoint_type.form(entrypoint_data) }}
+        
+        <!-- checkboxes for tagging -->
+        <div class="form-group">
+          <p class="no-margin form-text"><b>Additional tags:</b></p>
+          {% for tag in tags %}
+          {% if tag.tag_name != tag_name %}
+          <input type="checkbox" class="tag-checkbox" value="{{tag.tag_name}}">
+          <label class="checkbox-label" for="{{tag.tag_name}}">
+            {{tag.display_name}}
+          </label>
+          {% endif %}
+          {% endfor %}
+        </div>
+
+      </form>
+
+      <div class="text-right">
+        <a class="btn btn-default" href="/services/entrypoint/{{tag_name}}/select" type="button">Cancel</a>
+        {% if entrypoint_data %}
+        <button id="submit" class="btn btn-primary" type="button" onclick="updateHandler()">Submit</button>
+        {% else %}
+        <button id="submit" class="btn btn-primary" type="button" onclick="addHandler()">Submit</button>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+  <div class="row">
+      <br/>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8 col-md-offset-2" id="error-msg">
+    </div>
+  </div>
+
+</div>
+
+<script type="text/javascript">
+
+async function addHandler() {
+
+    let entrypoint_data = {
+        user: "{{user.name}}",
+        entrypoint_type: "{{entrypoint_type.type_name}}",
+    };
+
+    let tag_names = ["{{tag_name}}"];
+
+    $("#form :input").each(function(index) {
+        if ($(this).hasClass("tag-checkbox")) {
+            if ($(this).prop("checked")) tag_names.push($(this).val());
+        }
+        else {
+            var name = $(this).attr("name");
+            var value = $(this).val();
+            entrypoint_data[name] = value;
+        }
+    });
+
+    result = await addEntrypoint(entrypoint_data, tag_names);
+
+    if (!result.result) {
+        $("#error-msg").html(`<div class="alert alert-danger" role="alert">${result.message}</div>`);
+        $("#submit").blur();
+    } else {
+        location.replace("/services/entrypoint/{{tag_name}}/select");
+    }
+
+}
+
+// Add user entrypoint
+
+async function addEntrypoint(entrypoint_data, tag_names) {
+    const payload = {
+        entrypoint_data: entrypoint_data,
+        tag_names: tag_names
+    };
+    const response = await $.ajax({
+        method: "POST",
+        url: "/services/entrypoint/api/mgmt/users/{{user.name}}/entrypoints/",
+        data: JSON.stringify(payload),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+    });
+
+    return response;
+}
+
+async function updateHandler() {
+
+    let entrypoint_data = {
+        user: "{{user.name}}",
+        entrypoint_type: "{{entrypoint_type.type_name}}",
+    };
+
+    let tag_names = ["{{tag_name}}"];
+
+    $("#form :input").each(function(index) {
+        if ($(this).hasClass("tag-checkbox")) {
+            if ($(this).prop("checked")) tag_names.push($(this).val());
+        }
+        else {
+            var name = $(this).attr("name");
+            var value = $(this).val();
+            entrypoint_data[name] = value;
+        }
+    });
+
+    result = await updateEntrypoint(entrypoint_data, tag_names);
+
+    if (!result.result) {
+        $("#error-msg").html(`<div class="alert alert-danger" role="alert">${result.message}</div>`);
+        $("#submit").blur();
+    } else {
+        location.replace("/services/entrypoint/{{tag_name}}/select");
+    }
+
+}
+
+async function updateEntrypoint(entrypoint_data, tag_names) {
+    const payload = {
+        entrypoint_data: entrypoint_data,
+        tag_names: tag_names
+    };
+    const response = await $.ajax({
+        method: "PUT",
+        url: "/services/entrypoint/api/mgmt/users/{{user.name}}/entrypoints/",
+        data: JSON.stringify(payload),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+    });
+
+    return response;
+}
+
+</script>
+{% endblock %}

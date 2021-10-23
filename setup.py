@@ -10,6 +10,10 @@ setup(
         author_email='jgeden@lbl.gov',
         url='https://github.com/Josh0823/jupyterhub-entrypoint',
         packages=['jupyterhub_entrypoint', 'jupyterhub_entrypoint.dbi'],
-        data_files=[("share/jupyterhub/entrypoint/templates", 
-            ["templates/index.html", "templates/error-no-tags.html"])]
+        data_files=[("share/jupyterhub/entrypoint/templates", [
+            "templates/about.html",
+            "templates/index.html",
+            "templates/error-no-tags.html",
+            "templates/manage.html"
+        ])]
 )

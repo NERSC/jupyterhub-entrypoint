@@ -24,8 +24,9 @@ from traitlets import (
 
 from jupyterhub_entrypoint.ssl_context import SSLContext
 from jupyterhub_entrypoint.handlers import (
-    ViewHandler, EntrypointPostHandler, EntrypointDeleteHandler, 
-    SelectionHandler, HubSelectionHandler
+    AboutHandler, NewHandler, ViewHandler, UpdateHandler,
+    EntrypointPostHandler, EntrypointDeleteHandler, SelectionHandler,
+    HubSelectionHandler
 )
 from jupyterhub_entrypoint.types import EntrypointType
 from jupyterhub_entrypoint import dbi
@@ -112,7 +113,7 @@ class EntrypointService(config.Application, config.Configurable):
     ).tag(config=True)
 
     types = List(
-        Tuple(Type(), Tuple()),
+        Tuple(Type(), List()),
         help="TBD"
     ).tag(config=True)
 
@@ -207,11 +208,20 @@ class EntrypointService(config.Application, config.Configurable):
 
         handlers = list()
 
+        # redirect to default tag
+
+        handler = (
+            self.service_prefix,
+            RedirectHandler,
+            dict(url=self.service_prefix + self.default_tag_name + "/select")
+        )
+        handlers.append(handler)
+
         # if there are no tags just register the notag handler
 
         for tag in self.tags:
             handler = (
-                self.service_prefix + tag["tag_name"], 
+                self.service_prefix + tag["tag_name"] + "/select",
                 ViewHandler,
                 dict(
                     tag=tag,
@@ -221,12 +231,36 @@ class EntrypointService(config.Application, config.Configurable):
             )
             handlers.append(handler)
 
-        # redirect to default tag
+        for tag in self.tags:
+            for entrypoint_type in self.entrypoint_types:
+                handler = (
+                    self.service_prefix + tag["tag_name"] + "/new/" + entrypoint_type.type_name,
+                    NewHandler,
+                    dict(
+                        tag=tag,
+                        entrypoint_type=entrypoint_type,
+                        loader=loader
+                    )
+                )
+                handlers.append(handler)
+
+        for tag in self.tags:
+            for entrypoint_type in self.entrypoint_types:
+                handler = (
+                    self.service_prefix + tag["tag_name"] + "/update/" + entrypoint_type.type_name + "/(.+)",
+                    UpdateHandler,
+                    dict(
+                        tag=tag,
+                        entrypoint_type=entrypoint_type,
+                        loader=loader
+                    )
+                )
+                handlers.append(handler)
 
         handler = (
-            self.service_prefix,
-            RedirectHandler,
-            dict(url=self.service_prefix + self.default_tag_name)
+            self.service_prefix + "about",
+            AboutHandler,
+            dict(loader=loader)
         )
         handlers.append(handler)
 
