@@ -4,10 +4,10 @@ import pytest
 from jupyterhub_entrypoint import dbi
 
 @pytest.mark.asyncio
-async def test_ok(engine, tag_names, entrypoint_args):
+async def test_ok(engine, context_names, entrypoint_args):
     async with engine.begin() as conn:
-        for tag_name in tag_names:
-            await dbi.create_tag(conn, tag_name)
+        for context_name in context_names:
+            await dbi.create_context(conn, context_name)
     async with engine.begin() as conn:
         for args in entrypoint_args:
             await dbi.create_entrypoint(conn, *args)
@@ -22,10 +22,10 @@ async def test_ok(engine, tag_names, entrypoint_args):
             output = await dbi.retrieve_one_entrypoint(conn, *args[:2])
 
 @pytest.mark.asyncio
-async def test_fails(engine, tag_names, entrypoint_args):
+async def test_fails(engine, context_names, entrypoint_args):
     async with engine.begin() as conn:
-        for tag_name in tag_names:
-            await dbi.create_tag(conn, tag_name)
+        for context_name in context_names:
+            await dbi.create_context(conn, context_name)
     async with engine.begin() as conn:
         for args in entrypoint_args:
             await dbi.create_entrypoint(conn, *args)

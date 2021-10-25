@@ -16,7 +16,7 @@
 
   <div class="row text-center">
     <div class="col-md-offset-2 col-md-8">
-      <h2>New {{entrypoint_type.display_name}} entrypoint for {{tag_name}}</h2>
+      <h2>New {{entrypoint_type.display_name}} entrypoint for {{context_name}}</h2>
     </div>
   </div>
 
@@ -29,12 +29,12 @@
         
         <!-- checkboxes for tagging -->
         <div class="form-group">
-          <p class="no-margin form-text"><b>Additional tags:</b></p>
-          {% for tag in tags %}
-          {% if tag.tag_name != tag_name %}
-          <input type="checkbox" class="tag-checkbox" value="{{tag.tag_name}}">
-          <label class="checkbox-label" for="{{tag.tag_name}}">
-            {{tag.display_name}}
+          <p class="no-margin form-text"><b>Additional contexts:</b></p>
+          {% for context in contexts %}
+          {% if context.context_name != context_name %}
+          <input type="checkbox" class="context-checkbox" value="{{context.context_name}}">
+          <label class="checkbox-label" for="{{context.context_name}}">
+            {{context.display_name}}
           </label>
           {% endif %}
           {% endfor %}
@@ -43,7 +43,7 @@
       </form>
 
       <div class="text-right">
-        <a class="btn btn-default" href="/services/entrypoint/{{tag_name}}/select" type="button">Cancel</a>
+        <a class="btn btn-default" href="/services/entrypoint/{{context_name}}/select" type="button">Cancel</a>
         {% if entrypoint_data %}
         <button id="submit" class="btn btn-primary" type="button" onclick="updateHandler()">Submit</button>
         {% else %}
@@ -74,11 +74,11 @@ async function addHandler() {
         entrypoint_type: "{{entrypoint_type.type_name}}",
     };
 
-    let tag_names = ["{{tag_name}}"];
+    let context_names = ["{{context_name}}"];
 
     $("#form :input").each(function(index) {
-        if ($(this).hasClass("tag-checkbox")) {
-            if ($(this).prop("checked")) tag_names.push($(this).val());
+        if ($(this).hasClass("context-checkbox")) {
+            if ($(this).prop("checked")) context_names.push($(this).val());
         }
         else {
             var name = $(this).attr("name");
@@ -87,23 +87,23 @@ async function addHandler() {
         }
     });
 
-    result = await addEntrypoint(entrypoint_data, tag_names);
+    result = await addEntrypoint(entrypoint_data, context_names);
 
     if (!result.result) {
         $("#error-msg").html(`<div class="alert alert-danger" role="alert">${result.message}</div>`);
         $("#submit").blur();
     } else {
-        location.replace("/services/entrypoint/{{tag_name}}/select");
+        location.replace("/services/entrypoint/{{context_name}}/select");
     }
 
 }
 
 // Add user entrypoint
 
-async function addEntrypoint(entrypoint_data, tag_names) {
+async function addEntrypoint(entrypoint_data, context_names) {
     const payload = {
         entrypoint_data: entrypoint_data,
-        tag_names: tag_names
+        context_names: context_names
     };
     const response = await $.ajax({
         method: "POST",
@@ -123,11 +123,11 @@ async function updateHandler() {
         entrypoint_type: "{{entrypoint_type.type_name}}",
     };
 
-    let tag_names = ["{{tag_name}}"];
+    let context_names = ["{{context_name}}"];
 
     $("#form :input").each(function(index) {
-        if ($(this).hasClass("tag-checkbox")) {
-            if ($(this).prop("checked")) tag_names.push($(this).val());
+        if ($(this).hasClass("context-checkbox")) {
+            if ($(this).prop("checked")) context_names.push($(this).val());
         }
         else {
             var name = $(this).attr("name");
@@ -136,21 +136,21 @@ async function updateHandler() {
         }
     });
 
-    result = await updateEntrypoint(entrypoint_data, tag_names);
+    result = await updateEntrypoint(entrypoint_data, context_names);
 
     if (!result.result) {
         $("#error-msg").html(`<div class="alert alert-danger" role="alert">${result.message}</div>`);
         $("#submit").blur();
     } else {
-        location.replace("/services/entrypoint/{{tag_name}}/select");
+        location.replace("/services/entrypoint/{{context_name}}/select");
     }
 
 }
 
-async function updateEntrypoint(entrypoint_data, tag_names) {
+async function updateEntrypoint(entrypoint_data, context_names) {
     const payload = {
         entrypoint_data: entrypoint_data,
-        tag_names: tag_names
+        context_names: context_names
     };
     const response = await $.ajax({
         method: "PUT",

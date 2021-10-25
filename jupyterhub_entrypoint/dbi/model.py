@@ -5,11 +5,11 @@ from sqlalchemy import (
 
 metadata = MetaData()
 
-tags = Table(
-    "tags",
+contexts = Table(
+    "contexts",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column("tag_name", Text, nullable=False, unique=True)
+    Column("context_name", Text, nullable=False, unique=True)
 )
 
 entrypoints = Table(
@@ -23,21 +23,21 @@ entrypoints = Table(
     UniqueConstraint("user", "entrypoint_name")
 )
 
-entrypoint_tags = Table(
-    "entrypoint_tags",
+entrypoint_contexts = Table(
+    "entrypoint_contexts",
     metadata,
     Column(
-        "entrypoint_id", 
-        None, 
+        "entrypoint_id",
+        None,
         ForeignKey("entrypoints.id", ondelete="CASCADE"),
         primary_key=True
     ),
     Column(
-        "tag_id",
+        "context_id",
         None,
-        ForeignKey("tags.id", ondelete="CASCADE"),
+        ForeignKey("contexts.id", ondelete="CASCADE"),
         primary_key=True
     ),
     Column("user", Text, nullable=True),
-    UniqueConstraint("tag_id", "user")
+    UniqueConstraint("context_id", "user")
 )

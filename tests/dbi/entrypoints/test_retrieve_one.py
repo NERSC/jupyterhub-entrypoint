@@ -4,10 +4,10 @@ import pytest
 from jupyterhub_entrypoint import dbi
 
 @pytest.mark.asyncio
-async def test_ok(engine, tag_names, entrypoint_args):
+async def test_ok(engine, context_names, entrypoint_args):
     async with engine.begin() as conn:
-        for tag_name in tag_names:
-            await dbi.create_tag(conn, tag_name)
+        for context_name in context_names:
+            await dbi.create_context(conn, context_name)
     async with engine.begin() as conn:
         for args in entrypoint_args:
             await dbi.create_entrypoint(conn, *args)
@@ -20,20 +20,20 @@ async def test_ok(engine, tag_names, entrypoint_args):
         output = await dbi.retrieve_one_entrypoint(conn, user, entrypoint_name)
     assert len(output) == 2
     assert "entrypoint_data" in output
-    assert "tag_names" in output
+    assert "context_names" in output
     output_entrypoint_data = output["entrypoint_data"]
-    output_tag_names = output["tag_names"]
+    output_context_names = output["context_names"]
     for key in args[3]:
         assert output_entrypoint_data[key] == args[3][key]
-    assert len(output_tag_names) == len(args[4])
-    for output_tag_name, expected_tag_name in zip(output_tag_names, args[4]):
-        assert output_tag_name == expected_tag_name
+    assert len(output_context_names) == len(args[4])
+    for output_context_name, expected_context_name in zip(output_context_names, args[4]):
+        assert output_context_name == expected_context_name
 
 @pytest.mark.asyncio
-async def test_fails(engine, tag_names, entrypoint_args):
+async def test_fails(engine, context_names, entrypoint_args):
     async with engine.begin() as conn:
-        for tag_name in tag_names:
-            await dbi.create_tag(conn, tag_name)
+        for context_name in context_names:
+            await dbi.create_context(conn, context_name)
     async with engine.begin() as conn:
         for args in entrypoint_args:
             await dbi.create_entrypoint(conn, *args)

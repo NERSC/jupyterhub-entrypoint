@@ -19,10 +19,10 @@ from .selections import (
     delete_selection
 )
 
-from .tags import (
-    create_tag,
-    retrieve_tags,
-    delete_tag
+from .contexts import (
+    create_context,
+    retrieve_contexts,
+    delete_context
 )
 
 def async_engine(*args, **kwargs):

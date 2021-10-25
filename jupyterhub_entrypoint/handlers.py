@@ -37,11 +37,11 @@ class BaseHandler(web.RequestHandler):
 class ViewHandler(HubAuthenticated, BaseHandler):
     """TBD"""
 
-    def initialize(self, tag, entrypoint_types, loader):
+    def initialize(self, context, entrypoint_types, loader):
         """TBD"""
 
         super().initialize()
-        self.tag = tag
+        self.context = context
         self.entrypoint_types = entrypoint_types
         self.loader = loader
         self.env = Environment(loader=self.loader, enable_async=True)
@@ -53,14 +53,14 @@ class ViewHandler(HubAuthenticated, BaseHandler):
 
         user = self.get_current_user()
         username = user["name"]
-        tag_name = self.tag["tag_name"]
+        context_name = self.context["context_name"]
 
         async with self.engine.begin() as conn:
             entrypoints = await dbi.retrieve_many_entrypoints(
-                conn, username, None, tag_name
+                conn, username, None, context_name
             )
 
-        entrypoints = entrypoints.get(tag_name, {})
+        entrypoints = entrypoints.get(context_name, {})
 
         selection = None
         for entrypoint_type in self.entrypoint_types:
@@ -81,20 +81,20 @@ class ViewHandler(HubAuthenticated, BaseHandler):
             selection=selection,
             service_prefix=self.settings["service_prefix"],
             static_url=self.static_url,
-            tag_name=tag_name,
-            tags=self.settings["tags"],
-            user=user, 
+            context_name=context_name,
+            contexts=self.settings["contexts"],
+            user=user,
         )
         self.write(chunk)
 
 
 class NewHandler(HubAuthenticated, BaseHandler):
 
-    def initialize(self, tag, entrypoint_type, loader):
+    def initialize(self, context, entrypoint_type, loader):
         """TBD"""
 
         super().initialize()
-        self.tag = tag
+        self.context = context
         self.entrypoint_type = entrypoint_type
         self.loader = loader
         self.env = Environment(loader=self.loader, enable_async=True)
@@ -113,10 +113,10 @@ class NewHandler(HubAuthenticated, BaseHandler):
             no_spawner_check=True,
             service_prefix=self.settings["service_prefix"],
             static_url=self.static_url,
-            user=user, 
+            user=user,
             entrypoint_type=self.entrypoint_type,
-            tag_name=self.tag["tag_name"],
-            tags=self.settings["tags"],
+            context_name=self.context["context_name"],
+            contexts=self.settings["contexts"],
             entrypoint_data=None
         )
         self.write(chunk)
@@ -124,11 +124,11 @@ class NewHandler(HubAuthenticated, BaseHandler):
 
 class UpdateHandler(HubAuthenticated, BaseHandler):
 
-    def initialize(self, tag, entrypoint_type, loader):
+    def initialize(self, context, entrypoint_type, loader):
         """TBD"""
 
         super().initialize()
-        self.tag = tag
+        self.context = context
         self.entrypoint_type = entrypoint_type
         self.loader = loader
         self.env = Environment(loader=self.loader, enable_async=True)
@@ -145,9 +145,9 @@ class UpdateHandler(HubAuthenticated, BaseHandler):
         async with self.engine.begin() as conn:
             result = await dbi.retrieve_one_entrypoint(
                 conn, username, entrypoint_name
-            ) # tag_names is paused but should also pass through
+            ) # context_names is paused but should also pass through
         entrypoint_data = result["entrypoint_data"]
-        tag_names = result["tag_names"]
+        context_names = result["context_names"]
 
         chunk = await self.template_manage.render_async(
             base_url=base_url,
@@ -156,10 +156,10 @@ class UpdateHandler(HubAuthenticated, BaseHandler):
             no_spawner_check=True,
             service_prefix=self.settings["service_prefix"],
             static_url=self.static_url,
-            user=user, 
+            user=user,
             entrypoint_type=self.entrypoint_type,
-            tag_name=self.tag["tag_name"],
-            tags=self.settings["tags"],
+            context_name=self.context["context_name"],
+            contexts=self.settings["contexts"],
             entrypoint_data=entrypoint_data
         )
         self.write(chunk)
@@ -193,7 +193,7 @@ class EntrypointPostHandler(EntrypointHandler):
                     entrypoint_data["entrypoint_name"],
                     entrypoint_data["entrypoint_type"],
                     entrypoint_data,
-                    payload["tag_names"]
+                    payload["context_names"]
                 )
 
             self.write({"result": True, "message": "Entrypoint added"})
@@ -220,7 +220,7 @@ class EntrypointPostHandler(EntrypointHandler):
                     entrypoint_data["entrypoint_name"],
                     entrypoint_data["entrypoint_type"],
                     entrypoint_data,
-#                   payload["tag_names"] FIXME should be able to change this too
+#                   payload["context_names"] FIXME should be able to change this too
                 )
 
             self.write({"result": True, "message": "Entrypoint updated"})
@@ -258,7 +258,7 @@ class EntrypointPostHandler(EntrypointHandler):
 
 class EntrypointDeleteHandler(EntrypointHandler):
     """Deletes entrypoints."""
-    
+
     @web.authenticated
     async def delete(self, user, entrypoint_name):
         """TBD"""
@@ -272,20 +272,20 @@ class SelectionHandler(HubAuthenticated, BaseHandler):
     """Updates user entrypoint selections."""
 
     @web.authenticated
-    async def put(self, user, entrypoint_name, tag_name):
+    async def put(self, user, entrypoint_name, context_name):
         """TBD"""
 
         async with self.engine.begin() as conn:
-            await dbi.update_selection(conn, user, entrypoint_name, tag_name)
+            await dbi.update_selection(conn, user, entrypoint_name, context_name)
         self.write({})
 
     @web.authenticated
-    async def delete(self, user, entrypoint_name, tag_name):
+    async def delete(self, user, entrypoint_name, context_name):
         """TBD"""
 
         # FIXME entrypoint_name isn't doing anything here, maybe don't need it
         async with self.engine.begin() as conn:
-            await dbi.delete_selection(conn, user, tag_name)
+            await dbi.delete_selection(conn, user, context_name)
         self.write({})
 
 
@@ -299,7 +299,7 @@ class HubSelectionHandler(BaseHandler):
         self.entrypoint_api_token = os.environ["ENTRYPOINT_API_TOKEN"]
         self.entrypoint_types = entrypoint_types
 
-    async def get(self, user, tag_name):
+    async def get(self, user, context_name):
         """TBD"""
 
         if not self.validate_token():
@@ -308,13 +308,13 @@ class HubSelectionHandler(BaseHandler):
         try:
             async with self.engine.begin() as conn:
                 entrypoint_data = await dbi.retrieve_selection(
-                    conn, 
-                    user, 
-                    tag_name
+                    conn,
+                    user,
+                    context_name
                 )
         except ValueError:
             raise web.HTTPError(404)
-       
+
         cmd = list()
         for entrypoint_type in self.entrypoint_types:
             if entrypoint_type.type_name == entrypoint_data["entrypoint_type"]:
@@ -356,6 +356,6 @@ class AboutHandler(HubAuthenticated, BaseHandler):
             no_spawner_check=True,
             service_prefix=self.settings["service_prefix"],
             static_url=self.static_url,
-            user=user, 
+            user=user,
         )
         self.write(chunk)

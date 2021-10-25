@@ -62,14 +62,14 @@ class EntrypointService(config.Application, config.Configurable):
         help="Location of JupyterHub data files"
     )
 
-    default_tag_name = Unicode(
-        help="Name of default tag, if unset, uses the first tag defined"
+    default_context_name = Unicode(
+        help="Name of default context, if unset, uses the first one defined"
     ).tag(config=True)
 
-    @default("default_tag_name")
-    def _default_tag_name(self):
-        return self.tags[0]["tag_name"]
-    
+    @default("default_context_name")
+    def _default_context_name(self):
+        return self.contexts[0]["context_name"]
+
     entrypoint_api_token = Unicode(
         os.environ.get("JUPYTERHUB_API_TOKEN"),
         help="Secret token to access JupyterHub as an API"
@@ -103,9 +103,9 @@ class EntrypointService(config.Application, config.Configurable):
         help="Entrypoint service prefix"
     ).tag(config=True)
 
-    tags = List(
+    contexts = List(
         [], #Dict,
-        help="List of tags"
+        help="List of contexts"
     ).tag(config=True)
 
     template_paths = List(
@@ -187,8 +187,8 @@ class EntrypointService(config.Application, config.Configurable):
                 await dbi.init_db(conn)
 
             async with engine.begin() as conn:
-                for tag in self.tags:
-                    await dbi.create_tag(conn, tag["tag_name"])
+                for context in self.contexts:
+                    await dbi.create_context(conn, context["context_name"])
 
         loop = asyncio.get_event_loop()
         coroutine = init_db(engine)
@@ -201,56 +201,56 @@ class EntrypointService(config.Application, config.Configurable):
             "static_path": os.path.join(self.data_files_path, "static"),
             "static_url_prefix": url_path_join(self.service_prefix, "static/"),
             "engine": engine,
-            "tags": self.tags,
+            "contexts": self.contexts,
         }
 
         # create handlers
 
         handlers = list()
 
-        # redirect to default tag
+        # redirect to default context
 
         handler = (
             self.service_prefix,
             RedirectHandler,
-            dict(url=self.service_prefix + self.default_tag_name + "/select")
+            dict(url=self.service_prefix + self.default_context_name + "/select")
         )
         handlers.append(handler)
 
-        # if there are no tags just register the notag handler
+        # if there are no contexts just register the no-context handler
 
-        for tag in self.tags:
+        for context in self.contexts:
             handler = (
-                self.service_prefix + tag["tag_name"] + "/select",
+                self.service_prefix + context["context_name"] + "/select",
                 ViewHandler,
                 dict(
-                    tag=tag,
+                    context=context,
                     entrypoint_types=self.entrypoint_types,
                     loader=loader
                 )
             )
             handlers.append(handler)
 
-        for tag in self.tags:
+        for context in self.contexts:
             for entrypoint_type in self.entrypoint_types:
                 handler = (
-                    self.service_prefix + tag["tag_name"] + "/new/" + entrypoint_type.type_name,
+                    self.service_prefix + context["context_name"] + "/new/" + entrypoint_type.type_name,
                     NewHandler,
                     dict(
-                        tag=tag,
+                        context=context,
                         entrypoint_type=entrypoint_type,
                         loader=loader
                     )
                 )
                 handlers.append(handler)
 
-        for tag in self.tags:
+        for context in self.contexts:
             for entrypoint_type in self.entrypoint_types:
                 handler = (
-                    self.service_prefix + tag["tag_name"] + "/update/" + entrypoint_type.type_name + "/(.+)",
+                    self.service_prefix + context["context_name"] + "/update/" + entrypoint_type.type_name + "/(.+)",
                     UpdateHandler,
                     dict(
-                        tag=tag,
+                        context=context,
                         entrypoint_type=entrypoint_type,
                         loader=loader
                     )
@@ -284,7 +284,7 @@ class EntrypointService(config.Application, config.Configurable):
         # Selection API handler
 
         handler = (
-            self.service_prefix + "api/mgmt/users/(.+)/selections/(.+)/tags/(.+)",
+            self.service_prefix + "api/mgmt/users/(.+)/selections/(.+)/contexts/(.+)",
             SelectionHandler
         )
         handlers.append(handler)

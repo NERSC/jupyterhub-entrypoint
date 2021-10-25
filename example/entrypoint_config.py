@@ -39,9 +39,9 @@
 #  Default: 'sqlite+aiosqlite:///:memory:'
 # c.EntrypointService.database_url = 'sqlite+aiosqlite:///:memory:'
 
-## Name of default tag, if unset, uses the first tag defined
+## Name of default context, if unset, uses the first context defined
 #  Default: ''
-# c.EntrypointService.default_tag_name = ''
+# c.EntrypointService.default_context_name = ''
 
 ## Secret token to access JupyterHub as an API
 #  Default: None
@@ -83,17 +83,17 @@
 #  See also: Application.show_config_json
 # c.EntrypointService.show_config_json = False
 
-## List of tags
+## List of contexts
 #  Default: []
-# c.EntrypointService.tags = []
-c.EntrypointService.tags = [{
-    "tag_name": "multivac",
+# c.EntrypointService.contexts = []
+c.EntrypointService.contexts = [{
+    "context_name": "multivac",
     "display_name": "Multivac",
 }, {
-    "tag_name": "hal",
+    "context_name": "hal",
     "display_name": "HAL",
 }, {
-    "tag_name": "m5",
+    "context_name": "m5",
     "display_name": "M-5",
 }]
 
@@ -115,4 +115,3 @@ c.EntrypointService.types = [(
 ## Turns on SQLAlchemy echo for verbose output
 #  Default: False
 # c.EntrypointService.verbose_sqlalchemy = False
-
