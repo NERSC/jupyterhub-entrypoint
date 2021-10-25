@@ -4,10 +4,10 @@ import pytest
 from jupyterhub_entrypoint import dbi
 
 @pytest.mark.asyncio
-async def test_ok(engine, tag_names, entrypoint_args):
+async def test_ok(engine, context_names, entrypoint_args):
     async with engine.begin() as conn:
-        for tag_name in tag_names:
-            await dbi.create_tag(conn, tag_name)
+        for context_name in context_names:
+            await dbi.create_context(conn, context_name)
     async with engine.begin() as conn:
         for args in entrypoint_args:
             await dbi.create_entrypoint(conn, *args)
@@ -16,25 +16,25 @@ async def test_ok(engine, tag_names, entrypoint_args):
 
     args = None
     for a in entrypoint_args:
-        if len(a[-1]) == len(tag_names):
+        if len(a[-1]) == len(context_names):
             args = a
             break
 
     user, entrypoint_name = args[:2]
     async with engine.begin() as conn:
-        await dbi.update_selection(conn, user, entrypoint_name, tag_names[1])
+        await dbi.update_selection(conn, user, entrypoint_name, context_names[1])
 
     async with engine.begin() as conn:
-        output_data = await dbi.retrieve_selection(conn, user, tag_names[1])
+        output_data = await dbi.retrieve_selection(conn, user, context_names[1])
     assert len(output_data) == len(args[-2])
     for key in args[-2]:
         assert output_data[key] == args[-2][key]
 
 @pytest.mark.asyncio
-async def test_unknown(engine, tag_names, entrypoint_args):
+async def test_unknown(engine, context_names, entrypoint_args):
     async with engine.begin() as conn:
-        for tag_name in tag_names:
-            await dbi.create_tag(conn, tag_name)
+        for context_name in context_names:
+            await dbi.create_context(conn, context_name)
     async with engine.begin() as conn:
         for args in entrypoint_args:
             await dbi.create_entrypoint(conn, *args)

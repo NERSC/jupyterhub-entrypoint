@@ -4,10 +4,10 @@ import pytest
 from jupyterhub_entrypoint import dbi
 
 @pytest.mark.asyncio
-async def test_ok(engine, tag_names, entrypoint_args):
+async def test_ok(engine, context_names, entrypoint_args):
     async with engine.begin() as conn:
-        for tag_name in tag_names:
-            await dbi.create_tag(conn, tag_name)
+        for context_name in context_names:
+            await dbi.create_context(conn, context_name)
     async with engine.begin() as conn:
         for args in entrypoint_args:
             await dbi.create_entrypoint(conn, *args)
@@ -21,18 +21,18 @@ async def test_ok(engine, tag_names, entrypoint_args):
     async with engine.begin() as conn:
         output = await dbi.retrieve_one_entrypoint(conn, *args[:2])
     assert "entrypoint_data" in output
-    assert "tag_names" in output
+    assert "context_names" in output
     output_entrypoint_data = output["entrypoint_data"]
-    output_tags = output["tag_names"]
+    output_contexts = output["context_names"]
     assert len(output_entrypoint_data) == 1
     assert "hello" in output_entrypoint_data
     assert output_entrypoint_data["hello"] == "world"
 
 @pytest.mark.asyncio
-async def test_fails(engine, tag_names, entrypoint_args):
+async def test_fails(engine, context_names, entrypoint_args):
     async with engine.begin() as conn:
-        for tag_name in tag_names:
-            await dbi.create_tag(conn, tag_name)
+        for context_name in context_names:
+            await dbi.create_context(conn, context_name)
     async with engine.begin() as conn:
         for args in entrypoint_args:
             await dbi.create_entrypoint(conn, *args)

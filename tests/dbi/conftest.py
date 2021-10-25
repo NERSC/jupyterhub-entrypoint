@@ -16,7 +16,7 @@ async def engine():
     await async_engine.dispose()
 
 @pytest.fixture
-def tag_names():
+def context_names():
     return sorted([
         "colossus",
         "guardian",
@@ -51,10 +51,10 @@ def entrypoint_types():
     ])
 
 @pytest.fixture
-def entrypoint_args(users, entrypoint_names, entrypoint_types, tag_names):
+def entrypoint_args(users, entrypoint_names, entrypoint_types, context_names):
     args = list()
     count = 0
-    divisor = len(tag_names)+1
+    divisor = len(context_names)+1
     for u in users:
         for n in entrypoint_names:
             for t in entrypoint_types:
@@ -64,7 +64,7 @@ def entrypoint_args(users, entrypoint_names, entrypoint_types, tag_names):
                     entrypoint_type=t,
                     other="/a/b/c/d"
                 )
-                arg = (u, f"{n}-{t}", t, data, tag_names[:count%divisor])
+                arg = (u, f"{n}-{t}", t, data, context_names[:count%divisor])
                 args.append(arg)
                 count += 1
     return args        

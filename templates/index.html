@@ -17,16 +17,16 @@
     </div>
   </div>
 
-  <!-- Buttons to switch tags -->
+  <!-- Buttons to switch contexts -->
   <div class="row">
     <div class="col-md-offset-2 col-md-8">
       <div class="text-center">
         <div class="btn-group" role="group">
-          {% for tag in tags %}
-          {% if tag.tag_name == tag_name %}
-          <a class="btn btn-default active" href="#" role="button">{{tag.display_name}}</a>
+          {% for context in contexts %}
+          {% if context.context_name == context_name %}
+          <a class="btn btn-default active" href="#" role="button">{{context.display_name}}</a>
           {% else %}
-          <a class="btn btn-default" href="{{service_prefix}}{{tag.tag_name}}/select" role="button">{{tag.display_name}}</a>
+          <a class="btn btn-default" href="{{service_prefix}}{{context.context_name}}/select" role="button">{{context.display_name}}</a>
           {% endif %}
           {% endfor %}
         </div>
@@ -99,7 +99,7 @@
       <hr>
       <h4>
         {{display_name | title}} Entrypoints
-        <a class="btn btn-primary btn-sm pull-right" href="{{service_prefix}}{{tag_name}}/new/{{type_name}}" type="button">create</a>
+        <a class="btn btn-primary btn-sm pull-right" href="{{service_prefix}}{{context_name}}/new/{{type_name}}" type="button">create</a>
       </h4>
       {% if description %}
       <p>{{description}}</p>
@@ -119,7 +119,7 @@
           {{entrypoint.entrypoint_data.entrypoint_name}}
         </label>
         <span class="pull-right">
-          <a class="btn btn-primary btn-sm" href="{{service_prefix}}{{tag_name}}/update/{{type_name}}/{{entrypoint.entrypoint_data.entrypoint_name}}" type="button">
+          <a class="btn btn-primary btn-sm" href="{{service_prefix}}{{context_name}}/update/{{type_name}}/{{entrypoint.entrypoint_data.entrypoint_name}}" type="button">
             update
           </a>
           <button type="button" onclick="deleteEntrypoint('{{entrypoint.entrypoint_data.entrypoint_name}}')" class="btn btn-danger btn-sm">
@@ -279,7 +279,7 @@ $("input[name='selected_entrypoint']").change(function(event) {
     if (selected_entrypoint) {
         $.ajax({
             method: "PUT",
-            url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/${selected_entrypoint}/tags/{{tag_name}}`,
+            url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/${selected_entrypoint}/contexts/{{context_name}}`,
             data: JSON.stringify({}),
             contentType: "application/json; charset=utf-8",
             dataType: "json",
@@ -291,7 +291,7 @@ $("input[name='selected_entrypoint']").change(function(event) {
         {% if selection %}
         $.ajax({
             method: "DELETE",
-            url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/{{selection.entrypoint_data.entrypoint_name}}/tags/{{tag_name}}`,
+            url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/{{selection.entrypoint_data.entrypoint_name}}/contexts/{{context_name}}`,
             data: JSON.stringify({}),
             contentType: "application/json; charset=utf-8",
             dataType: "json",
@@ -309,7 +309,7 @@ $("#clear-selection").submit(function (event) {
     {% if selection %}
     $.ajax({
         method: "DELETE",
-        url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/{{selection.entrypoint_data.entrypoint_name}}/tags/{{tag_name}}`,
+        url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/{{selection.entrypoint_data.entrypoint_name}}/contexts/{{context_name}}`,
         data: JSON.stringify({}),
         contentType: "application/json; charset=utf-8",
         dataType: "json",
@@ -334,7 +334,7 @@ async function selectHandler(entrypoint_type) {
 async function selectEntrypoint(entrypoint_name) {
     const response = await $.ajax({
         method: "PUT",
-        url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/${entrypoint_name}/tags/{{tag_name}}`,
+        url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/${entrypoint_name}/contexts/{{context_name}}`,
         data: JSON.stringify({}),
         contentType: "application/json; charset=utf-8",
         dataType: "json",
@@ -346,7 +346,7 @@ async function selectEntrypoint(entrypoint_name) {
 
 async function deleteHandler(entrypoint_name) {
     if (entrypoint_name !== null) {
-        if (confirm(`Are you sure you want to delete entrypoint "${entrypoint_name}"?\nThis will remove it for all tags.`)) {
+        if (confirm(`Are you sure you want to delete entrypoint "${entrypoint_name}"?\nThis will remove it for all contexts.`)) {
             const result = await deleteEntrypoint(entrypoint_name);
             location.reload();
         }
@@ -356,7 +356,7 @@ async function deleteHandler(entrypoint_name) {
 // Delete user entrypoint
 
 async function deleteEntrypoint(entrypoint_name) {
-    if (confirm(`Are you sure you want to delete entrypoint "${entrypoint_name}"?\nThis will remove it for all tags.`)) {
+    if (confirm(`Are you sure you want to delete entrypoint "${entrypoint_name}"?\nThis will remove it for all contexts.`)) {
         const response = await $.ajax({
             method: "DELETE",
             url: `/services/entrypoint/api/mgmt/users/{{user.name}}/entrypoints/${entrypoint_name}`,
@@ -377,11 +377,11 @@ async function addHandler(entrypoint_type) {
         entrypoint_type: entrypoint_type,
     };
 
-    let tag_names = ["{{tag_name}}"];
+    let context_names = ["{{context_name}}"];
 
     $(`#testing-${entrypoint_type} :input`).each(function(index) {
-        if ($(this).hasClass("tag-checkbox")) {
-            if ($(this).prop("checked")) tag_names.push($(this).val());
+        if ($(this).hasClass("context-checkbox")) {
+            if ($(this).prop("checked")) context_names.push($(this).val());
         }
         else {
             var name = $(this).attr("name");
@@ -390,7 +390,7 @@ async function addHandler(entrypoint_type) {
         }
     });
 
-    result = await addEntrypoint(entrypoint_data, tag_names);
+    result = await addEntrypoint(entrypoint_data, context_names);
 
     if (!result.result) {
         $(`#${entrypoint_type}-error-msg`).html(result.message);
@@ -401,10 +401,10 @@ async function addHandler(entrypoint_type) {
 
 // Add user entrypoint
 
-async function addEntrypoint(entrypoint_data, tag_names) {
+async function addEntrypoint(entrypoint_data, context_names) {
     const payload = {
         entrypoint_data: entrypoint_data,
-        tag_names: tag_names
+        context_names: context_names
     };
     const response = await $.ajax({
         method: "POST",
