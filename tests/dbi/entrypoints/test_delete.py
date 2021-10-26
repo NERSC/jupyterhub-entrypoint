@@ -48,9 +48,19 @@ async def test_cascade(engine, context_names, entrypoint_args):
             if args[-1]:
                 await dbi.create_entrypoint(conn, *args)
                 break
+
+    async with engine.begin() as conn:
+        statement = select(dbi.model.entrypoints)
+        results = await conn.execute(statement)
+        assert len(list(results)) == 1
     
     async with engine.begin() as conn:
         await dbi.delete_entrypoint(conn, *args[:2])
+
+    async with engine.begin() as conn:
+        statement = select(dbi.model.entrypoints)
+        results = await conn.execute(statement)
+        assert len(list(results)) == 0
 
     async with engine.begin() as conn:
         statement = select(dbi.model.entrypoint_contexts)

@@ -37,6 +37,9 @@ def async_engine(*args, **kwargs):
 
 def register_foreign_keys(): # pragma: no cover
     """Enable deletes with cascade in e.g. sqlite"""
+
+    # See https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=pragma#foreign-key-support
+
     @event.listens_for(Engine, "connect")
     def connect(dbi_connection, connection_record):
         cursor = dbi_connection.cursor()
