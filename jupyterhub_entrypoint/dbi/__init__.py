@@ -1,4 +1,8 @@
 
+from sqlite3 import Connection as SQLite3Connection
+
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from .model import metadata
@@ -26,7 +30,21 @@ from .contexts import (
 )
 
 def async_engine(*args, **kwargs):
-    return create_async_engine(*args, **kwargs)
+    engine = create_async_engine(*args, **kwargs)
+    if engine.name == "sqlite":
+        register_foreign_keys()
+    return engine
+
+def register_foreign_keys(): # pragma: no cover
+    """Enable deletes with cascade in e.g. sqlite"""
+
+    # See https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=pragma#foreign-key-support
+
+    @event.listens_for(Engine, "connect")
+    def connect(dbi_connection, connection_record):
+        cursor = dbi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 async def init_db(conn, drop_all=False):
     if drop_all:
