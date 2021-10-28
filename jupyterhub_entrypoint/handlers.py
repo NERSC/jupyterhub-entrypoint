@@ -1,23 +1,18 @@
-#########################################################################
-# @author Josh Geden
-# This class is a Tornado request handler that is used in entrypoint.py
-# It returns a rendered jinja template when its GET method is called
-#########################################################################
 
 import logging
 import os
 
-from jinja2 import Environment
-from jupyterhub.utils import url_path_join
+from jinja2 import Environment, FileSystemLoader
 from jupyterhub.services.auth import HubAuthenticated
-from tornado import web
+from jupyterhub.utils import url_path_join
 from tornado.escape import json_decode
+from tornado.web import authenticated, HTTPError, RequestHandler
 
 from jupyterhub_entrypoint import dbi
 from jupyterhub_entrypoint.types import EntrypointValidationError
 
 
-class BaseHandler(web.RequestHandler):
+class BaseHandler(RequestHandler):
     """Common behaviors across all handler classes."""
 
     def initialize(self):
@@ -34,20 +29,62 @@ class BaseHandler(web.RequestHandler):
         )
 
 
-class ViewHandler(HubAuthenticated, BaseHandler):
+class EntrypointHandler(HubAuthenticated, BaseHandler):
     """TBD"""
 
-    def initialize(self, context, entrypoint_types, loader):
+
+class WebHandler(EntrypointHandler):
+    """TBD"""
+
+    def initialize(self):
+        """TBD"""
+
+        super().initialize()
+        self.loader = FileSystemLoader(self.settings["template_paths"])
+        self.env = Environment(loader=self.loader, enable_async=True)
+
+
+class AboutHandler(WebHandler):
+    """TBD"""
+
+    def initialize(self):
+        """TBD"""
+
+        super().initialize()
+        self.template_about = self.env.get_template("about.html")
+
+    @authenticated
+    async def get(self):
+        """TBD"""
+
+        user = self.get_current_user()
+        hub_auth = self.hub_auth
+        base_url = hub_auth.hub_prefix
+
+        chunk = await self.template_about.render_async(
+            base_url=base_url,
+            login_url=hub_auth.login_url,
+            logout_url=url_path_join(base_url, "logout"),
+            no_spawner_check=True,
+            service_prefix=self.settings["service_prefix"],
+            static_url=self.static_url,
+            user=user,
+        )
+        self.write(chunk)
+
+
+class ViewHandler(WebHandler):
+    """TBD"""
+
+    def initialize(self, context, entrypoint_types):
         """TBD"""
 
         super().initialize()
         self.context = context
         self.entrypoint_types = entrypoint_types
-        self.loader = loader
-        self.env = Environment(loader=self.loader, enable_async=True)
         self.template_index = self.env.get_template("index.html")
 
-    @web.authenticated
+    @authenticated
     async def get(self):
         """TBD"""
 
@@ -88,19 +125,17 @@ class ViewHandler(HubAuthenticated, BaseHandler):
         self.write(chunk)
 
 
-class NewHandler(HubAuthenticated, BaseHandler):
+class NewHandler(WebHandler):
 
-    def initialize(self, context, entrypoint_type, loader):
+    def initialize(self, context, entrypoint_type):
         """TBD"""
 
         super().initialize()
         self.context = context
         self.entrypoint_type = entrypoint_type
-        self.loader = loader
-        self.env = Environment(loader=self.loader, enable_async=True)
         self.template_manage = self.env.get_template("manage.html")
 
-    @web.authenticated
+    @authenticated
     async def get(self):
 
         user = self.get_current_user()
@@ -122,19 +157,17 @@ class NewHandler(HubAuthenticated, BaseHandler):
         self.write(chunk)
 
 
-class UpdateHandler(HubAuthenticated, BaseHandler):
+class UpdateHandler(WebHandler):
 
-    def initialize(self, context, entrypoint_type, loader):
+    def initialize(self, context, entrypoint_type):
         """TBD"""
 
         super().initialize()
         self.context = context
         self.entrypoint_type = entrypoint_type
-        self.loader = loader
-        self.env = Environment(loader=self.loader, enable_async=True)
         self.template_manage = self.env.get_template("manage.html")
 
-    @web.authenticated
+    @authenticated
     async def get(self, entrypoint_name):
 
         user = self.get_current_user()
@@ -165,10 +198,6 @@ class UpdateHandler(HubAuthenticated, BaseHandler):
         self.write(chunk)
 
 
-class EntrypointHandler(HubAuthenticated, BaseHandler):
-    """TBD"""
-    pass
-
 class EntrypointPostHandler(EntrypointHandler):
     """TBD"""
 
@@ -178,7 +207,7 @@ class EntrypointPostHandler(EntrypointHandler):
         super().initialize()
         self.entrypoint_types = entrypoint_types
 
-    @web.authenticated
+    @authenticated
     async def post(self, user):
         """TBD"""
 
@@ -205,7 +234,7 @@ class EntrypointPostHandler(EntrypointHandler):
             # Types of errors may need a bit more elaboration (like unique names)
             self.write({"result": False, "message": "Error"})
 
-    @web.authenticated
+    @authenticated
     async def put(self, user):
         """TBD"""
 
@@ -259,7 +288,7 @@ class EntrypointPostHandler(EntrypointHandler):
 class EntrypointDeleteHandler(EntrypointHandler):
     """Deletes entrypoints."""
 
-    @web.authenticated
+    @authenticated
     async def delete(self, user, entrypoint_name):
         """TBD"""
 
@@ -268,10 +297,10 @@ class EntrypointDeleteHandler(EntrypointHandler):
         self.write({})
 
 
-class SelectionHandler(HubAuthenticated, BaseHandler):
+class SelectionHandler(EntrypointHandler):
     """Updates user entrypoint selections."""
 
-    @web.authenticated
+    @authenticated
     async def put(self, user, entrypoint_name, context_name):
         """TBD"""
 
@@ -279,7 +308,7 @@ class SelectionHandler(HubAuthenticated, BaseHandler):
             await dbi.update_selection(conn, user, entrypoint_name, context_name)
         self.write({})
 
-    @web.authenticated
+    @authenticated
     async def delete(self, user, entrypoint_name, context_name):
         """TBD"""
 
@@ -303,7 +332,7 @@ class HubSelectionHandler(BaseHandler):
         """TBD"""
 
         if not self.validate_token():
-            raise web.HTTPError(403)
+            raise HTTPError(403)
 
         try:
             async with self.engine.begin() as conn:
@@ -313,7 +342,7 @@ class HubSelectionHandler(BaseHandler):
                     context_name
                 )
         except ValueError:
-            raise web.HTTPError(404)
+            raise HTTPError(404)
 
         cmd = list()
         for entrypoint_type in self.entrypoint_types:
@@ -330,32 +359,3 @@ class HubSelectionHandler(BaseHandler):
             f"token {self.entrypoint_api_token}"
         )
 
-class AboutHandler(HubAuthenticated, BaseHandler):
-    """TBD"""
-
-    def initialize(self, loader):
-        """TBD"""
-
-        super().initialize()
-        self.loader = loader
-        self.env = Environment(loader=self.loader, enable_async=True)
-        self.template_about = self.env.get_template("about.html")
-
-    @web.authenticated
-    async def get(self):
-        """TBD"""
-
-        user = self.get_current_user()
-        hub_auth = self.hub_auth
-        base_url = hub_auth.hub_prefix
-
-        chunk = await self.template_about.render_async(
-            base_url=base_url,
-            login_url=hub_auth.login_url,
-            logout_url=url_path_join(base_url, "logout"),
-            no_spawner_check=True,
-            service_prefix=self.settings["service_prefix"],
-            static_url=self.static_url,
-            user=user,
-        )
-        self.write(chunk)
