@@ -10,7 +10,6 @@ import logging
 import os
 import sys
 
-from jinja2 import FileSystemLoader
 from jupyterhub.log import CoroutineLogFormatter
 from jupyterhub._data import DATA_FILES_PATH
 from jupyterhub.utils import url_path_join
@@ -170,9 +169,6 @@ class EntrypointService(config.Application, config.Configurable):
 
         self.log.info(self.template_paths)
 
-        # create a jinja loader to get the necessary html templates
-        loader = FileSystemLoader(self.template_paths)
-
         # create SQLAlchemy engine and optionally initialize database FIXME parameterize
         engine = dbi.async_engine(
             self.database_url,
@@ -202,6 +198,7 @@ class EntrypointService(config.Application, config.Configurable):
             "static_url_prefix": url_path_join(self.service_prefix, "static/"),
             "engine": engine,
             "contexts": self.contexts,
+            "template_paths": self.template_paths
         }
 
         # create handlers
@@ -225,8 +222,7 @@ class EntrypointService(config.Application, config.Configurable):
                 ViewHandler,
                 dict(
                     context=context,
-                    entrypoint_types=self.entrypoint_types,
-                    loader=loader
+                    entrypoint_types=self.entrypoint_types
                 )
             )
             handlers.append(handler)
@@ -238,8 +234,7 @@ class EntrypointService(config.Application, config.Configurable):
                     NewHandler,
                     dict(
                         context=context,
-                        entrypoint_type=entrypoint_type,
-                        loader=loader
+                        entrypoint_type=entrypoint_type
                     )
                 )
                 handlers.append(handler)
@@ -251,16 +246,14 @@ class EntrypointService(config.Application, config.Configurable):
                     UpdateHandler,
                     dict(
                         context=context,
-                        entrypoint_type=entrypoint_type,
-                        loader=loader
+                        entrypoint_type=entrypoint_type
                     )
                 )
                 handlers.append(handler)
 
         handler = (
             self.service_prefix + "about",
-            AboutHandler,
-            dict(loader=loader)
+            AboutHandler
         )
         handlers.append(handler)
 
