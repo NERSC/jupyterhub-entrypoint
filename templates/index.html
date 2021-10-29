@@ -279,7 +279,7 @@ $("input[name='selected_entrypoint']").change(function(event) {
     if (selected_entrypoint) {
         $.ajax({
             method: "PUT",
-            url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/${selected_entrypoint}/contexts/{{context_name}}`,
+            url: `/services/entrypoint/api/selections/${selected_entrypoint}/contexts/{{context_name}}`,
             data: JSON.stringify({}),
             contentType: "application/json; charset=utf-8",
             dataType: "json",
@@ -291,7 +291,7 @@ $("input[name='selected_entrypoint']").change(function(event) {
         {% if selection %}
         $.ajax({
             method: "DELETE",
-            url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/{{selection.entrypoint_data.entrypoint_name}}/contexts/{{context_name}}`,
+            url: `/services/entrypoint/api/selections/{{selection.entrypoint_data.entrypoint_name}}/contexts/{{context_name}}`,
             data: JSON.stringify({}),
             contentType: "application/json; charset=utf-8",
             dataType: "json",
@@ -309,7 +309,7 @@ $("#clear-selection").submit(function (event) {
     {% if selection %}
     $.ajax({
         method: "DELETE",
-        url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/{{selection.entrypoint_data.entrypoint_name}}/contexts/{{context_name}}`,
+        url: `/services/entrypoint/api/selections/{{selection.entrypoint_data.entrypoint_name}}/contexts/{{context_name}}`,
         data: JSON.stringify({}),
         contentType: "application/json; charset=utf-8",
         dataType: "json",
@@ -334,7 +334,7 @@ async function selectHandler(entrypoint_type) {
 async function selectEntrypoint(entrypoint_name) {
     const response = await $.ajax({
         method: "PUT",
-        url: `/services/entrypoint/api/mgmt/users/{{user.name}}/selections/${entrypoint_name}/contexts/{{context_name}}`,
+        url: `/services/entrypoint/api/selections/${entrypoint_name}/contexts/{{context_name}}`,
         data: JSON.stringify({}),
         contentType: "application/json; charset=utf-8",
         dataType: "json",
@@ -359,7 +359,7 @@ async function deleteEntrypoint(entrypoint_name) {
     if (confirm(`Are you sure you want to delete entrypoint "${entrypoint_name}"?\nThis will remove it for all contexts.`)) {
         const response = await $.ajax({
             method: "DELETE",
-            url: `/services/entrypoint/api/mgmt/users/{{user.name}}/entrypoints/${entrypoint_name}`,
+            url: `/services/entrypoint/api/entrypoints/${entrypoint_name}`,
             data: JSON.stringify({}),
             contentType: "application/json; charset=utf-8",
             dataType: "json",
@@ -408,7 +408,7 @@ async function addEntrypoint(entrypoint_data, context_names) {
     };
     const response = await $.ajax({
         method: "POST",
-        url: "/services/entrypoint/api/mgmt/users/{{user.name}}/entrypoints/",
+        url: "/services/entrypoint/api/entrypoints/",
         data: JSON.stringify(payload),
         contentType: "application/json; charset=utf-8",
         dataType: "json",

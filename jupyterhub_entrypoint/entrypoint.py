@@ -259,7 +259,7 @@ class EntrypointService(config.Application, config.Configurable):
         # Entrypoint API delete handler
 
         handler = (
-            self.service_prefix + "api/mgmt/users/(.+)/entrypoints/(.+)",
+            self.service_prefix + "api/entrypoints/(.+)",
             EntrypointDeleteHandler
         )
         handlers.append(handler)
@@ -267,7 +267,7 @@ class EntrypointService(config.Application, config.Configurable):
         # Entrypoint API post handler
 
         handler = (
-            self.service_prefix + "api/mgmt/users/(.+)/entrypoints/",
+            self.service_prefix + "api/entrypoints/",
             EntrypointPostHandler,
             dict(entrypoint_types=self.entrypoint_types)
         )
@@ -276,7 +276,7 @@ class EntrypointService(config.Application, config.Configurable):
         # Selection API handler
 
         handler = (
-            self.service_prefix + "api/mgmt/users/(.+)/selections/(.+)/contexts/(.+)",
+            self.service_prefix + "api/selections/(.+)/contexts/(.+)",
             SelectionHandler
         )
         handlers.append(handler)
@@ -284,7 +284,7 @@ class EntrypointService(config.Application, config.Configurable):
         # Hub's selection handler
 
         handler = (
-            self.service_prefix + "api/hub/users/(.+)/selections/(.+)",
+            self.service_prefix + "api/users/(.+)/selections/(.+)",
             HubSelectionHandler,
             dict(
                 entrypoint_types=self.entrypoint_types,

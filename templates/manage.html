@@ -107,7 +107,7 @@ async function addEntrypoint(entrypoint_data, context_names) {
     };
     const response = await $.ajax({
         method: "POST",
-        url: "/services/entrypoint/api/mgmt/users/{{user.name}}/entrypoints/",
+        url: "/services/entrypoint/api/entrypoints/",
         data: JSON.stringify(payload),
         contentType: "application/json; charset=utf-8",
         dataType: "json",
@@ -154,7 +154,7 @@ async function updateEntrypoint(entrypoint_data, context_names) {
     };
     const response = await $.ajax({
         method: "PUT",
-        url: "/services/entrypoint/api/mgmt/users/{{user.name}}/entrypoints/",
+        url: "/services/entrypoint/api/entrypoints/",
         data: JSON.stringify(payload),
         contentType: "application/json; charset=utf-8",
         dataType: "json",

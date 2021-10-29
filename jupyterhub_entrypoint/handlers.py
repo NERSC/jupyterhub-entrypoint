@@ -208,8 +208,10 @@ class EntrypointPostHandler(EntrypointHandler):
         self.entrypoint_types = entrypoint_types
 
     @authenticated
-    async def post(self, user):
+    async def post(self):
         """TBD"""
+
+        user = self.get_current_user().get("name")
 
         try:
             payload = json_decode(self.request.body)
@@ -235,8 +237,10 @@ class EntrypointPostHandler(EntrypointHandler):
             self.write({"result": False, "message": "Error"})
 
     @authenticated
-    async def put(self, user):
+    async def put(self):
         """TBD"""
+
+        user = self.get_current_user().get("name")
 
         try:
             payload = json_decode(self.request.body)
@@ -266,16 +270,11 @@ class EntrypointPostHandler(EntrypointHandler):
 
         Raises:
             EntrypointValidationError: If the user field doesn't match the
-            authenticated user, or the user argument, or the entrypoint type
-            cannot be identified.
+            authenticated user, or the entrypoint type cannot be identified.
 
         """
 
-        current_user = self.get_current_user()
-        username = current_user["name"]
-        if username != user:
-            raise EntrypointValidationError
-        if username != entrypoint_data.get("user"):
+        if user != entrypoint_data.get("user"):
             raise EntrypointValidationError
 
         for entrypoint_type in self.entrypoint_types:
@@ -289,8 +288,10 @@ class EntrypointDeleteHandler(EntrypointHandler):
     """Deletes entrypoints."""
 
     @authenticated
-    async def delete(self, user, entrypoint_name):
+    async def delete(self, entrypoint_name):
         """TBD"""
+
+        user = self.get_current_user().get("name")
 
         async with self.engine.begin() as conn:
             await dbi.delete_entrypoint(conn, user, entrypoint_name)
@@ -301,16 +302,20 @@ class SelectionHandler(EntrypointHandler):
     """Updates user entrypoint selections."""
 
     @authenticated
-    async def put(self, user, entrypoint_name, context_name):
+    async def put(self, entrypoint_name, context_name):
         """TBD"""
+
+        user = self.get_current_user().get("name")
 
         async with self.engine.begin() as conn:
             await dbi.update_selection(conn, user, entrypoint_name, context_name)
         self.write({})
 
     @authenticated
-    async def delete(self, user, entrypoint_name, context_name):
+    async def delete(self, entrypoint_name, context_name):
         """TBD"""
+
+        user = self.get_current_user().get("name")
 
         # FIXME entrypoint_name isn't doing anything here, maybe don't need it
         async with self.engine.begin() as conn:
