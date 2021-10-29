@@ -10,7 +10,6 @@ import logging
 import os
 import sys
 
-from jinja2 import FileSystemLoader
 from jupyterhub.log import CoroutineLogFormatter
 from jupyterhub._data import DATA_FILES_PATH
 from jupyterhub.utils import url_path_join
@@ -108,9 +107,21 @@ class EntrypointService(config.Application, config.Configurable):
         help="List of contexts"
     ).tag(config=True)
 
-    template_paths = List(
-        help="Search paths for jinja templates, coming before default ones"
+    custom_template_paths = List(
+        help="Search paths for custom templates, coming before default ones"
     ).tag(config=True)
+
+    default_template_paths = List(
+        help="Paths to default JupyterHub and Entrypoint Service templates"
+    )
+
+    # set the default value for the path to the templates folder
+    @default("default_template_paths")
+    def _default_template_paths(self):
+        return [
+            os.path.join(self.data_files_path, "entrypoint", "templates"),
+            os.path.join(self.data_files_path, "templates"),
+        ]
 
     types = List(
         Tuple(Type(), List()),
@@ -126,13 +137,6 @@ class EntrypointService(config.Application, config.Configurable):
             entrypoint_type = cls(*args)
             new_entrypoint_types.append(entrypoint_type)
         self.entrypoint_types = new_entrypoint_types
-
-    # set the default value for the path to the templates folder
-    @default("template_paths")
-    def _template_paths_default(self):
-        return ["templates",
-                os.path.join(self.data_files_path, "templates"),
-                os.path.join(self.data_files_path, "entrypoint", "templates")]
 
     verbose_sqlalchemy = Bool(
         False,
@@ -161,17 +165,6 @@ class EntrypointService(config.Application, config.Configurable):
 
         # initialize the ssl certificate
         self.init_ssl_context()
-
-        # get the base data path to find the templates folder
-        base_paths = self._template_paths_default()
-        for path in base_paths:
-            if path not in self.template_paths:
-                self.template_paths.append(path)
-
-        self.log.info(self.template_paths)
-
-        # create a jinja loader to get the necessary html templates
-        loader = FileSystemLoader(self.template_paths)
 
         # create SQLAlchemy engine and optionally initialize database FIXME parameterize
         engine = dbi.async_engine(
@@ -202,6 +195,9 @@ class EntrypointService(config.Application, config.Configurable):
             "static_url_prefix": url_path_join(self.service_prefix, "static/"),
             "engine": engine,
             "contexts": self.contexts,
+            "template_paths": (
+                self.custom_template_paths + self.default_template_paths
+            )
         }
 
         # create handlers
@@ -225,8 +221,7 @@ class EntrypointService(config.Application, config.Configurable):
                 ViewHandler,
                 dict(
                     context=context,
-                    entrypoint_types=self.entrypoint_types,
-                    loader=loader
+                    entrypoint_types=self.entrypoint_types
                 )
             )
             handlers.append(handler)
@@ -238,8 +233,7 @@ class EntrypointService(config.Application, config.Configurable):
                     NewHandler,
                     dict(
                         context=context,
-                        entrypoint_type=entrypoint_type,
-                        loader=loader
+                        entrypoint_type=entrypoint_type
                     )
                 )
                 handlers.append(handler)
@@ -251,16 +245,14 @@ class EntrypointService(config.Application, config.Configurable):
                     UpdateHandler,
                     dict(
                         context=context,
-                        entrypoint_type=entrypoint_type,
-                        loader=loader
+                        entrypoint_type=entrypoint_type
                     )
                 )
                 handlers.append(handler)
 
         handler = (
             self.service_prefix + "about",
-            AboutHandler,
-            dict(loader=loader)
+            AboutHandler
         )
         handlers.append(handler)
 
