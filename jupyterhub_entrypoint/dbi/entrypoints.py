@@ -72,13 +72,16 @@ async def create_entrypoint(
     )
     await conn.execute(statement)
 
-async def retrieve_one_entrypoint(conn, user, entrypoint_name):
-    """Retrieve data and contexts for a user's entrypoint by name.
+async def retrieve_one_entrypoint(conn, user, entrypoint_name=None, uuid=None):
+    """Retrieve data & contexts for a user's entrypoint either by name or UUID.
+
+    Specify `entrypoint_name` or `uuid` but not both.
 
     Args:
         conn            (AsyncConnection): SQLAlchemy asyncio connection proxy
         user            (str): User name
-        entrypoint_name (str): User-assigned entrypoint name
+        entrypoint_name (str, optional): User-assigned entrypoint name
+        uuid            (str, optional): Service-assigned UUID
 
     Returns:
         dict: Contains entrypoint data and list of context names
@@ -96,11 +99,31 @@ async def retrieve_one_entrypoint(conn, user, entrypoint_name):
         .select_from(entrypoints)
         .join(entrypoint_contexts, isouter=True)
         .join(contexts, isouter=True)
-        .where(
-            entrypoints.c.user == user,
-            entrypoints.c.entrypoint_name == entrypoint_name
-        )
     )
+
+    if entrypoint_name is None:
+        if uuid is None:
+            raise ValueError
+        else:
+            statement = (
+                statement
+                .where(
+                    entrypoints.c.user == user,
+                    entrypoints.c.uuid == uuid
+                )
+            )
+    else:
+        if uuid is None:
+            statement = (
+                statement
+                .where(
+                    entrypoints.c.user == user,
+                    entrypoints.c.entrypoint_name == entrypoint_name
+                )
+            )
+        else:
+            raise ValueError
+
     results = await conn.execute(statement)
 
     entrypoint_data = dict()
