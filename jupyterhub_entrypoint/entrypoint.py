@@ -1,11 +1,6 @@
-#########################################################################
-# @author Josh Geden
-# This class creates the main Tornado web app for the entrypoint service
-# It sets up the configurable variables and loads any config file
-# It also sets up all request handlers with their API endpoint
-#########################################################################
 
 import asyncio
+from collections import OrderedDict
 import logging
 import os
 import sys
@@ -24,19 +19,20 @@ from traitlets import (
 from jupyterhub_entrypoint.ssl_context import SSLContext
 from jupyterhub_entrypoint.handlers import (
     AboutHandler, NewHandler, ViewHandler, UpdateHandler,
-    EntrypointPostHandler, EntrypointDeleteHandler, SelectionHandler,
-    HubSelectionHandler
+    EntrypointAPIHandler, SelectionAPIHandler, HubSelectionAPIHandler
 )
 from jupyterhub_entrypoint.types import EntrypointType
 from jupyterhub_entrypoint import dbi
 
 
-class EntrypointService(config.Application, config.Configurable):
-    """Configurable Tornado web application class that initializes request handlers"""
+class EntrypointService(config.Application):
+    """TBD"""
 
     flags = Dict({
-        'generate-config': (
-            {'EntrypointService': {'generate_config': True}},
+        'generate-config': ({
+            'EntrypointService': {
+                'generate_config': True
+            }},
             'Generate default config file',
         )
     })
@@ -74,19 +70,29 @@ class EntrypointService(config.Application, config.Configurable):
         help="Secret token to access JupyterHub as an API"
     ).tag(config=True)
 
-    entrypoint_types = List(
+    entrypoint_types = Dict(
         Instance(EntrypointType),
+        key_trait=Unicode,
         help="TBD"
     )
+
+    _log_formatter_cls = CoroutineLogFormatter
+
+    @default('log_datefmt')
+    def _log_datefmt(self):
+        return "%Y-%m-%d %H:%M:%S"
+
+    @default('log_format')
+    def _log_format(self):
+        return "%(color)s[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s %(module)s:%(lineno)d]%(end_color)s %(message)s"
 
     logo_file = Unicode(
         "",
         help="Logo path, can be used to override JupyterHub one",
     ).tag(config=True)
 
-    # set the default value for the logo file
     @default("logo_file")
-    def _logo_file_default(self):
+    def _logo_file(self):
         return os.path.join(
             self.data_files_path, "static", "images", "jupyterhub-80.png"
         )
@@ -103,7 +109,7 @@ class EntrypointService(config.Application, config.Configurable):
     ).tag(config=True)
 
     contexts = List(
-        [], #Dict,
+        [],
         help="List of contexts"
     ).tag(config=True)
 
@@ -115,7 +121,6 @@ class EntrypointService(config.Application, config.Configurable):
         help="Paths to default JupyterHub and Entrypoint Service templates"
     )
 
-    # set the default value for the path to the templates folder
     @default("default_template_paths")
     def _default_template_paths(self):
         return [
@@ -128,30 +133,13 @@ class EntrypointService(config.Application, config.Configurable):
         help="TBD"
     ).tag(config=True)
 
-    @observe("types")
-    def _observe_types(self, change):
-        new = change["new"]
-        new_entrypoint_types = list()
-        for spec in new:
-            cls, args = spec
-            entrypoint_type = cls(*args)
-            new_entrypoint_types.append(entrypoint_type)
-        self.entrypoint_types = new_entrypoint_types
-
     verbose_sqlalchemy = Bool(
         False,
         help="Turns on SQLAlchemy echo for verbose output"
     ).tag(config=True)
 
-
-    # initialize the web app by loading the config file, loading the template,
-    # and setting the request handlers
     def initialize(self, argv=None):
         super().initialize(argv)
-
-#       logging.basicConfig(level=logging.INFO)
-#       logging.getLogger('tornado.access').disabled = not self.tornado_logs
-#       self.log = logging.getLogger(__name__)
 
         if self.generate_config:
             print(self.generate_config_file())
@@ -159,21 +147,25 @@ class EntrypointService(config.Application, config.Configurable):
 
         self.init_logging()
 
-        # load the config file if it's there
+        # Load config if it exists
+
         if self.config_file:
             self.load_config_file(self.config_file)
 
-        # initialize the ssl certificate
+        # Initialize SSL context
+
         self.init_ssl_context()
 
-        # create SQLAlchemy engine and optionally initialize database FIXME parameterize
+        # create SQLAlchemy engine, optionally init database
+        # FIXME parameterize
+
         engine = dbi.async_engine(
             self.database_url,
             echo=self.verbose_sqlalchemy,
             future=True
         )
 
-        # for now we always initialize the database for testing... FIXME
+        # FIXME for now we always initialize the database for testing...
 
         async def init_db(engine):
             async with engine.begin() as conn:
@@ -187,7 +179,14 @@ class EntrypointService(config.Application, config.Configurable):
         coroutine = init_db(engine)
         loop.run_until_complete(coroutine)
 
-        # create a dict of settings to pass on to the request handlers
+        # Create registry of entrypoint types
+
+        for cls, args in self.types:
+            entrypoint_type = cls(*args)
+            self.entrypoint_types[entrypoint_type.type_name] = entrypoint_type
+
+        # Configure handlers and launch Tornado app
+
         self.settings = {
             "service_prefix": self.service_prefix,
             "entrypoint_api_token": self.entrypoint_api_token,
@@ -197,123 +196,53 @@ class EntrypointService(config.Application, config.Configurable):
             "contexts": self.contexts,
             "template_paths": (
                 self.custom_template_paths + self.default_template_paths
-            )
+            ),
+            "entrypoint_types": self.entrypoint_types
         }
 
-        # create handlers
-
-        handlers = list()
-
-        # redirect to default context
-
-        handler = (
-            self.service_prefix,
-            RedirectHandler,
-            dict(url=self.service_prefix + self.default_context_name + "/select")
+        default_context_url = (
+            self.service_prefix + "contexts/" + self.default_context_name
         )
-        handlers.append(handler)
 
-        # if there are no contexts just register the no-context handler
-
-        for context in self.contexts:
-            handler = (
-                self.service_prefix + context["context_name"] + "/select",
-                ViewHandler,
-                dict(
-                    context=context,
-                    entrypoint_types=self.entrypoint_types
-                )
-            )
-            handlers.append(handler)
-
-        for context in self.contexts:
-            for entrypoint_type in self.entrypoint_types:
-                handler = (
-                    self.service_prefix + context["context_name"] + "/new/" + entrypoint_type.type_name,
-                    NewHandler,
-                    dict(
-                        context=context,
-                        entrypoint_type=entrypoint_type
-                    )
-                )
-                handlers.append(handler)
-
-        for context in self.contexts:
-            for entrypoint_type in self.entrypoint_types:
-                handler = (
-                    self.service_prefix + context["context_name"] + "/update/" + entrypoint_type.type_name + "/(.+)",
-                    UpdateHandler,
-                    dict(
-                        context=context,
-                        entrypoint_type=entrypoint_type
-                    )
-                )
-                handlers.append(handler)
-
-        handler = (
-            self.service_prefix + "about",
-            AboutHandler
+        self.app = Application([(
+                self.service_prefix,
+                RedirectHandler,
+                dict(url=default_context_url)
+            ), (
+                self.service_prefix + "about",
+                AboutHandler
+            ), (
+                self.service_prefix + "types/(.+)",
+                NewHandler
+            ), (
+                self.service_prefix + "contexts/(.+)",
+                ViewHandler
+            ), (
+                self.service_prefix + "entrypoints/(.+)",
+                UpdateHandler
+            ), (
+                self.service_prefix + "api/entrypoints/$",
+                EntrypointAPIHandler
+            ), (
+                self.service_prefix + "api/entrypoints/(.+)",
+                EntrypointAPIHandler
+            ), (
+                self.service_prefix + "api/selections/(.+)/contexts/(.+)",
+                SelectionAPIHandler
+            ), (
+                self.service_prefix + "api/users/(.+)/selections/(.+)",
+                HubSelectionAPIHandler
+            ), (
+                self.service_prefix + r"static/(.*)",
+                StaticFileHandler,
+                dict(path=self.settings["static_path"])
+            ), (
+                self.service_prefix + r"logo",
+                LogoHandler,
+                dict(path=self.logo_file)
+            )],
+            **self.settings
         )
-        handlers.append(handler)
-
-        # Entrypoint API delete handler
-
-        handler = (
-            self.service_prefix + "api/mgmt/users/(.+)/entrypoints/(.+)",
-            EntrypointDeleteHandler
-        )
-        handlers.append(handler)
-
-        # Entrypoint API post handler
-
-        handler = (
-            self.service_prefix + "api/mgmt/users/(.+)/entrypoints/",
-            EntrypointPostHandler,
-            dict(entrypoint_types=self.entrypoint_types)
-        )
-        handlers.append(handler)
-
-        # Selection API handler
-
-        handler = (
-            self.service_prefix + "api/mgmt/users/(.+)/selections/(.+)/contexts/(.+)",
-            SelectionHandler
-        )
-        handlers.append(handler)
-
-        # Hub's selection handler
-
-        handler = (
-            self.service_prefix + "api/hub/users/(.+)/selections/(.+)",
-            HubSelectionHandler,
-            dict(
-                entrypoint_types=self.entrypoint_types,
-            )
-        )
-        handlers.append(handler)
-
-        handlers += [
-            (self.service_prefix + r"static/(.*)", StaticFileHandler,
-             {"path": self.settings["static_path"]}),
-            (self.service_prefix + r"logo",
-             LogoHandler, {"path": self.logo_file})
-        ]
-
-        # use the settings and handlers to create a Tornado web app
-        self.app = Application(handlers, **self.settings)
-
-
-    _log_formatter_cls = CoroutineLogFormatter
-
-    @default('log_datefmt')
-    def _log_datefmt_default(self):
-        """Exclude date from default date format"""
-        return "%Y-%m-%d %H:%M:%S"
-
-    @default('log_format')
-    def _log_format_default(self):
-        """override default log format to include time"""
-        return "%(color)s[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s %(module)s:%(lineno)d]%(end_color)s %(message)s"
 
     def init_logging(self):
         # This prevents double log messages because tornado use a root logger
