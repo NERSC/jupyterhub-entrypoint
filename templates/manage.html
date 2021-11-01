@@ -4,7 +4,7 @@
 <div class="container">
 
   <div class="row">
-    <div class="col-md-offset-2 col-md-8">
+    <div class="col-xs-offset-2 col-xs-8">
       <div class="text-center title">
         <h1 id="title">
           JupyterHub Entrypoint Service<br/>
@@ -15,13 +15,13 @@
   </div>
 
   <div class="row text-center">
-    <div class="col-md-offset-2 col-md-8">
-      <h2>New {{entrypoint_type.display_name}} entrypoint for {{context_name}}</h2>
+    <div class="col-xs-offset-2 col-xs-8">
+      <h2>{{entrypoint_type.display_name | title}} Entrypoint</h2>
     </div>
   </div>
 
   <div class="row">
-    <div class="col-md-8 col-md-offset-2">
+    <div class="col-xs-8 col-xs-offset-2">
       <form id="form">
 
         <!-- input, select elements for entrypoint data -->
@@ -29,21 +29,23 @@
         
         <!-- checkboxes for tagging -->
         <div class="form-group">
-          <p class="no-margin form-text"><b>Additional contexts:</b></p>
+          <p class="no-margin form-text"><b>Contexts:</b></p>
           {% for context in contexts %}
-          {% if context.context_name != context_name %}
+          {% if context.context_name in checked_context_names %}
+          <input type="checkbox" class="context-checkbox" value="{{context.context_name}}" checked>
+          {% else %}
           <input type="checkbox" class="context-checkbox" value="{{context.context_name}}">
+          {% endif %}
           <label class="checkbox-label" for="{{context.context_name}}">
             {{context.display_name}}
           </label>
-          {% endif %}
           {% endfor %}
         </div>
 
       </form>
 
       <div class="text-right">
-        <a class="btn btn-default" href="/services/entrypoint/{{context_name}}/select" type="button">Cancel</a>
+        <a class="btn btn-default" href="/services/entrypoint/contexts/{{context_name}}" type="button">Cancel</a>
         {% if entrypoint_data %}
         <button id="submit" class="btn btn-primary" type="button" onclick="updateHandler()">Submit</button>
         {% else %}
@@ -59,7 +61,7 @@
   </div>
 
   <div class="row">
-    <div class="col-md-8 col-md-offset-2" id="error-msg">
+    <div class="col-xs-8 col-xs-offset-2" id="error-msg">
     </div>
   </div>
 
@@ -74,7 +76,7 @@ async function addHandler() {
         entrypoint_type: "{{entrypoint_type.type_name}}",
     };
 
-    let context_names = ["{{context_name}}"];
+    let context_names = [];
 
     $("#form :input").each(function(index) {
         if ($(this).hasClass("context-checkbox")) {
@@ -93,7 +95,7 @@ async function addHandler() {
         $("#error-msg").html(`<div class="alert alert-danger" role="alert">${result.message}</div>`);
         $("#submit").blur();
     } else {
-        location.replace("/services/entrypoint/{{context_name}}/select");
+        location.replace("/services/entrypoint/contexts/{{context_name}}");
     }
 
 }
@@ -123,7 +125,7 @@ async function updateHandler() {
         entrypoint_type: "{{entrypoint_type.type_name}}",
     };
 
-    let context_names = ["{{context_name}}"];
+    let context_names = [];
 
     $("#form :input").each(function(index) {
         if ($(this).hasClass("context-checkbox")) {
@@ -142,7 +144,7 @@ async function updateHandler() {
         $("#error-msg").html(`<div class="alert alert-danger" role="alert">${result.message}</div>`);
         $("#submit").blur();
     } else {
-        location.replace("/services/entrypoint/{{context_name}}/select");
+        location.replace("/services/entrypoint/contexts/{{context_name}}");
     }
 
 }
@@ -152,9 +154,10 @@ async function updateEntrypoint(entrypoint_data, context_names) {
         entrypoint_data: entrypoint_data,
         context_names: context_names
     };
+    const entrypoint_name = payload.entrypoint_data.entrypoint_name;
     const response = await $.ajax({
         method: "PUT",
-        url: "/services/entrypoint/api/entrypoints/",
+        url: `/services/entrypoint/api/entrypoints/${entrypoint_name}`,
         data: JSON.stringify(payload),
         contentType: "application/json; charset=utf-8",
         dataType: "json",

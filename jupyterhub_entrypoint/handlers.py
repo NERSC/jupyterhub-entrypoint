@@ -9,7 +9,9 @@ from tornado.escape import json_decode
 from tornado.web import authenticated, HTTPError, RequestHandler
 
 from jupyterhub_entrypoint import dbi
-from jupyterhub_entrypoint.types import EntrypointValidationError
+from jupyterhub_entrypoint.types import (
+    EntrypointType, EntrypointValidationError
+)
 
 
 class BaseHandler(RequestHandler):
@@ -76,21 +78,19 @@ class AboutHandler(WebHandler):
 class ViewHandler(WebHandler):
     """TBD"""
 
-    def initialize(self, context, entrypoint_types):
+    def initialize(self):
         """TBD"""
 
         super().initialize()
-        self.context = context
-        self.entrypoint_types = entrypoint_types
+        self.entrypoint_types = self.settings["entrypoint_types"]
         self.template_index = self.env.get_template("index.html")
 
     @authenticated
-    async def get(self):
+    async def get(self, context_name):
         """TBD"""
 
         user = self.get_current_user()
         username = user["name"]
-        context_name = self.context["context_name"]
 
         async with self.engine.begin() as conn:
             entrypoints = await dbi.retrieve_many_entrypoints(
@@ -100,8 +100,8 @@ class ViewHandler(WebHandler):
         entrypoints = entrypoints.get(context_name, {})
 
         selection = None
-        for entrypoint_type in self.entrypoint_types:
-            for entrypoint in entrypoints.get(entrypoint_type.type_name, []):
+        for entrypoint_type_name in self.entrypoint_types:
+            for entrypoint in entrypoints.get(entrypoint_type_name, []):
                 if entrypoint["selected"]:
                     selection = entrypoint
                     break
@@ -127,16 +127,21 @@ class ViewHandler(WebHandler):
 
 class NewHandler(WebHandler):
 
-    def initialize(self, context, entrypoint_type):
+    def initialize(self):
         """TBD"""
 
         super().initialize()
-        self.context = context
-        self.entrypoint_type = entrypoint_type
+        self.entrypoint_types = self.settings["entrypoint_types"]
         self.template_manage = self.env.get_template("manage.html")
 
     @authenticated
-    async def get(self):
+    async def get(self, entrypoint_type_name):
+
+        context_name = self.get_query_argument("context")
+
+        entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
+        if entrypoint_type is None:
+            raise WebError(404)
 
         user = self.get_current_user()
         hub_auth = self.hub_auth
@@ -149,8 +154,9 @@ class NewHandler(WebHandler):
             service_prefix=self.settings["service_prefix"],
             static_url=self.static_url,
             user=user,
-            entrypoint_type=self.entrypoint_type,
-            context_name=self.context["context_name"],
+            entrypoint_type=entrypoint_type,
+            context_name=context_name,
+            checked_context_names=[context_name],
             contexts=self.settings["contexts"],
             entrypoint_data=None
         )
@@ -159,16 +165,17 @@ class NewHandler(WebHandler):
 
 class UpdateHandler(WebHandler):
 
-    def initialize(self, context, entrypoint_type):
+    def initialize(self):
         """TBD"""
 
         super().initialize()
-        self.context = context
-        self.entrypoint_type = entrypoint_type
+        self.entrypoint_types = self.settings["entrypoint_types"]
         self.template_manage = self.env.get_template("manage.html")
 
     @authenticated
     async def get(self, entrypoint_name):
+
+        context_name = self.get_query_argument("context")
 
         user = self.get_current_user()
         username = user["name"]
@@ -178,9 +185,14 @@ class UpdateHandler(WebHandler):
         async with self.engine.begin() as conn:
             result = await dbi.retrieve_one_entrypoint(
                 conn, username, entrypoint_name
-            ) # context_names is paused but should also pass through
+            )
         entrypoint_data = result["entrypoint_data"]
         context_names = result["context_names"]
+
+        entrypoint_type_name = entrypoint_data["entrypoint_type"]
+        entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
+        if entrypoint_type is None:
+            raise WebError(404)
 
         chunk = await self.template_manage.render_async(
             base_url=base_url,
@@ -190,22 +202,26 @@ class UpdateHandler(WebHandler):
             service_prefix=self.settings["service_prefix"],
             static_url=self.static_url,
             user=user,
-            entrypoint_type=self.entrypoint_type,
-            context_name=self.context["context_name"],
+            entrypoint_type=entrypoint_type,
+            context_name=context_name,
+            checked_context_names=context_names,
             contexts=self.settings["contexts"],
             entrypoint_data=entrypoint_data
         )
         self.write(chunk)
 
 
-class EntrypointPostHandler(EntrypointHandler):
+class EntrypointAPIHandler(EntrypointHandler):
     """TBD"""
 
-    def initialize(self, entrypoint_types):
+    def initialize(self):
         """TBD"""
 
         super().initialize()
-        self.entrypoint_types = entrypoint_types
+        self.entrypoint_types = self.settings["entrypoint_types"]
+        self.context_names = [
+            context["context_name"] for context in self.settings["contexts"]
+        ]
 
     @authenticated
     async def post(self):
@@ -216,7 +232,9 @@ class EntrypointPostHandler(EntrypointHandler):
         try:
             payload = json_decode(self.request.body)
             entrypoint_data = payload["entrypoint_data"]
-            await self.validate(user, entrypoint_data)
+            await self.validate_entrypoint_data(user, entrypoint_data)
+            context_names = payload["context_names"] or self.context_names
+            self.validate_context_names(context_names)
             async with self.engine.begin() as conn:
                 await dbi.create_entrypoint(
                     conn,
@@ -224,48 +242,75 @@ class EntrypointPostHandler(EntrypointHandler):
                     entrypoint_data["entrypoint_name"],
                     entrypoint_data["entrypoint_type"],
                     entrypoint_data,
-                    payload["context_names"]
+                    context_names
                 )
-
             self.write({"result": True, "message": "Entrypoint added"})
         except EntrypointValidationError:
             self.log.error(f"Validation error: {entrypoint_data}")
             self.write({"result": False, "message": "Validation error"})
         except Exception as e:
             self.log.error(f"Error ({e}): {entrypoint_data}")
-            # Types of errors may need a bit more elaboration (like unique names)
             self.write({"result": False, "message": "Error"})
 
     @authenticated
-    async def put(self):
+    async def put(self, entrypoint_name):
         """TBD"""
 
         user = self.get_current_user().get("name")
 
+        async with self.engine.begin() as conn:
+            result = await dbi.retrieve_one_entrypoint(
+                conn, user, entrypoint_name
+            )
+        current_context_names = result["context_names"]
+
         try:
             payload = json_decode(self.request.body)
             entrypoint_data = payload["entrypoint_data"]
-            await self.validate(user, entrypoint_data)
+            await self.validate_entrypoint_data(user, entrypoint_data)
+            context_names = payload["context_names"] or self.context_names
+            self.validate_context_names(context_names)
+            to_tag = list(
+                set(context_names).difference(
+                    set(current_context_names)
+                )
+            )
+            to_untag = list(
+                set(current_context_names).difference(
+                    set(context_names)
+                )
+            )
             async with self.engine.begin() as conn:
                 await dbi.update_entrypoint(
                     conn,
                     user,
                     entrypoint_data["entrypoint_name"],
                     entrypoint_data["entrypoint_type"],
-                    entrypoint_data,
-#                   payload["context_names"] FIXME should be able to change this too
+                    entrypoint_data
                 )
-
+                for context_name in to_tag:
+                    await dbi.tag_entrypoint(
+                        conn,
+                        user,
+                        entrypoint_data["entrypoint_name"],
+                        context_name
+                    )
+                for context_name in to_untag:
+                    await dbi.untag_entrypoint(
+                        conn,
+                        user,
+                        entrypoint_data["entrypoint_name"],
+                        context_name
+                    )
             self.write({"result": True, "message": "Entrypoint updated"})
         except EntrypointValidationError:
             self.log.error(f"Validation error: {entrypoint_data}")
             self.write({"result": False, "message": "Validation error"})
         except Exception as e:
             self.log.error(f"Error ({e}): {entrypoint_data}")
-            # Types of errors may need a bit more elaboration (like unique names)
             self.write({"result": False, "message": "Error"})
 
-    async def validate(self, user, entrypoint_data):
+    async def validate_entrypoint_data(self, user, entrypoint_data):
         """Validate request and run appropriate validator on entrypoint data.
 
         Raises:
@@ -277,15 +322,18 @@ class EntrypointPostHandler(EntrypointHandler):
         if user != entrypoint_data.get("user"):
             raise EntrypointValidationError
 
-        for entrypoint_type in self.entrypoint_types:
-            if entrypoint_type.type_name == entrypoint_data["entrypoint_type"]:
-                await entrypoint_type.validate(entrypoint_data)
-                return
+        entrypoint_type = self.entrypoint_types.get(
+            entrypoint_data["entrypoint_type"]
+        )
+        if isinstance(entrypoint_type, EntrypointType):
+            await entrypoint_type.validate(entrypoint_data)
+            return
         raise EntrypointValidationError
 
-
-class EntrypointDeleteHandler(EntrypointHandler):
-    """Deletes entrypoints."""
+    def validate_context_names(self, context_names):
+        for name in context_names:
+            if name not in self.context_names:
+                raise EntrypointValidationError
 
     @authenticated
     async def delete(self, entrypoint_name):
@@ -298,7 +346,7 @@ class EntrypointDeleteHandler(EntrypointHandler):
         self.write({})
 
 
-class SelectionHandler(EntrypointHandler):
+class SelectionAPIHandler(EntrypointHandler):
     """Updates user entrypoint selections."""
 
     @authenticated
@@ -323,15 +371,15 @@ class SelectionHandler(EntrypointHandler):
         self.write({})
 
 
-class HubSelectionHandler(BaseHandler):
+class HubSelectionAPIHandler(BaseHandler):
     """Gives the hub and endpoint to contact to find out a user's selection."""
 
-    def initialize(self, entrypoint_types):
+    def initialize(self):
         """TBD"""
 
         super().initialize()
         self.entrypoint_api_token = os.environ["ENTRYPOINT_API_TOKEN"]
-        self.entrypoint_types = entrypoint_types
+        self.entrypoint_types = self.settings["entrypoint_types"]
 
     async def get(self, user, context_name):
         """TBD"""
@@ -349,11 +397,13 @@ class HubSelectionHandler(BaseHandler):
         except ValueError:
             raise HTTPError(404)
 
+        entrypoint_type = self.entrypoint_types.get(
+            entrypoint_data["entrypoint_type"]
+        )
+
         cmd = list()
-        for entrypoint_type in self.entrypoint_types:
-            if entrypoint_type.type_name == entrypoint_data["entrypoint_type"]:
-                cmd = entrypoint_type.cmd(entrypoint_data)
-                break
+        if isinstance(entrypoint_type, EntrypointType):
+            cmd = entrypoint_type.cmd(entrypoint_data)
         self.write(dict(cmd=cmd))
 
     def validate_token(self):
@@ -363,4 +413,3 @@ class HubSelectionHandler(BaseHandler):
             self.request.headers["Authorization"] ==
             f"token {self.entrypoint_api_token}"
         )
-
