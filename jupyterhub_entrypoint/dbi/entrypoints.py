@@ -1,5 +1,6 @@
 
 import itertools
+from uuid import uuid4
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import insert, select, update, delete
@@ -39,6 +40,7 @@ async def create_entrypoint(
         insert(entrypoints)
         .values(
             user=user,
+            uuid=str(uuid4()),
             entrypoint_name=entrypoint_name,
             entrypoint_type=entrypoint_type,
             entrypoint_data=entrypoint_data
