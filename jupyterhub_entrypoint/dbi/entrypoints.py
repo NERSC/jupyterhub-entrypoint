@@ -270,6 +270,45 @@ async def update_entrypoint(
     if results.rowcount == 0:
         raise ValueError
 
+async def update_entrypoint_uuid(
+    conn,
+    user,
+    uuid,
+    entrypoint_name,
+    entrypoint_data
+):
+    """Update the user entrypoint with the given UUID.
+
+    This makes it possible to change the entrypoint type or entrypoint data.
+    Both must be supplied even if they are not being changed.
+
+    Args:
+        conn            (AsyncConnection): SQLAlchemy asyncio connection proxy
+        user            (str): User name
+        uuid            (str): Service-assigned UUID
+        entrypoint_name (str): User-assigned entrypoint name
+        entrypoint_data (dict): Type-specific metadata
+
+    Raises:
+        ValueError: If the entrypoint to update cannot be found.
+
+    """
+
+    statement = (
+        update(entrypoints)
+        .where(
+            entrypoints.c.user == user,
+            entrypoints.c.uuid == uuid
+        )
+        .values(
+           entrypoint_name=entrypoint_name,
+           entrypoint_data=entrypoint_data
+        )
+    )
+    results = await conn.execute(statement)
+    if results.rowcount == 0:
+        raise ValueError
+
 async def _entrypoint_context_ids(conn, user, entrypoint_name, context_name):
     """Utility function for tag/untag entrypoint operations"""
 

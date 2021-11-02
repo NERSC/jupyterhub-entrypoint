@@ -12,6 +12,7 @@ from .entrypoints import (
     retrieve_one_entrypoint,
     retrieve_many_entrypoints,
     update_entrypoint,
+    update_entrypoint_uuid,
     tag_entrypoint,
     untag_entrypoint,
     delete_entrypoint

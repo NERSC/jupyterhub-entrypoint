@@ -254,14 +254,14 @@ class EntrypointAPIHandler(EntrypointHandler):
             self.write({"result": False, "message": "Error"})
 
     @authenticated
-    async def put(self, entrypoint_name):
+    async def put(self, uuid):
         """TBD"""
 
         user = self.get_current_user().get("name")
 
         async with self.engine.begin() as conn:
             result = await dbi.retrieve_one_entrypoint(
-                conn, user, entrypoint_name
+                conn, user, uuid=uuid
             )
         current_context_names = result["context_names"]
 
@@ -282,11 +282,11 @@ class EntrypointAPIHandler(EntrypointHandler):
                 )
             )
             async with self.engine.begin() as conn:
-                await dbi.update_entrypoint(
+                await dbi.update_entrypoint_uuid(
                     conn,
                     user,
+                    uuid,
                     entrypoint_data["entrypoint_name"],
-                    entrypoint_data["entrypoint_type"],
                     entrypoint_data
                 )
                 for context_name in to_tag:
@@ -310,6 +310,64 @@ class EntrypointAPIHandler(EntrypointHandler):
         except Exception as e:
             self.log.error(f"Error ({e}): {entrypoint_data}")
             self.write({"result": False, "message": "Error"})
+
+#   @authenticated
+#   async def put(self, entrypoint_name):
+#       """TBD"""
+
+#       user = self.get_current_user().get("name")
+
+#       async with self.engine.begin() as conn:
+#           result = await dbi.retrieve_one_entrypoint(
+#               conn, user, entrypoint_name
+#           )
+#       current_context_names = result["context_names"]
+
+#       try:
+#           payload = json_decode(self.request.body)
+#           entrypoint_data = payload["entrypoint_data"]
+#           await self.validate_entrypoint_data(user, entrypoint_data)
+#           context_names = payload["context_names"] or self.context_names
+#           self.validate_context_names(context_names)
+#           to_tag = list(
+#               set(context_names).difference(
+#                   set(current_context_names)
+#               )
+#           )
+#           to_untag = list(
+#               set(current_context_names).difference(
+#                   set(context_names)
+#               )
+#           )
+#           async with self.engine.begin() as conn:
+#               await dbi.update_entrypoint(
+#                   conn,
+#                   user,
+#                   entrypoint_data["entrypoint_name"],
+#                   entrypoint_data["entrypoint_type"],
+#                   entrypoint_data
+#               )
+#               for context_name in to_tag:
+#                   await dbi.tag_entrypoint(
+#                       conn,
+#                       user,
+#                       entrypoint_data["entrypoint_name"],
+#                       context_name
+#                   )
+#               for context_name in to_untag:
+#                   await dbi.untag_entrypoint(
+#                       conn,
+#                       user,
+#                       entrypoint_data["entrypoint_name"],
+#                       context_name
+#                   )
+#           self.write({"result": True, "message": "Entrypoint updated"})
+#       except EntrypointValidationError:
+#           self.log.error(f"Validation error: {entrypoint_data}")
+#           self.write({"result": False, "message": "Validation error"})
+#       except Exception as e:
+#           self.log.error(f"Error ({e}): {entrypoint_data}")
+#           self.write({"result": False, "message": "Error"})
 
     async def validate_entrypoint_data(self, user, entrypoint_data):
         """Validate request and run appropriate validator on entrypoint data.

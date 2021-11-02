@@ -157,7 +157,7 @@ async function updateEntrypoint(entrypoint_data, context_names) {
     const entrypoint_name = payload.entrypoint_data.entrypoint_name;
     const response = await $.ajax({
         method: "PUT",
-        url: `/services/entrypoint/api/entrypoints/${entrypoint_name}`,
+        url: "/services/entrypoint/api/entrypoints/{{uuid}}",
         data: JSON.stringify(payload),
         contentType: "application/json; charset=utf-8",
         dataType: "json",
