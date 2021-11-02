@@ -28,6 +28,7 @@ async def test_all_ok(engine, context_names, entrypoint_args, users):
                 x["entrypoint_data"]["user"] == user and 
                 x["entrypoint_data"]["entrypoint_name"] == entrypoint_name and
                 x["entrypoint_data"]["entrypoint_type"] == entrypoint_type and
+                "uuid" in x and
                 all([x["entrypoint_data"][key] == data[key] for key in data])
             ), False)
 
