@@ -1,5 +1,6 @@
 
 import pytest
+from sqlalchemy.sql import select
 
 from jupyterhub_entrypoint import dbi
 
@@ -29,6 +30,52 @@ async def test_ok(engine, context_names, entrypoint_args):
     assert output_entrypoint_data["hello"] == "world"
 
 @pytest.mark.asyncio
+async def test_uuid(engine, context_names, entrypoint_args):
+    async with engine.begin() as conn:
+        for context_name in context_names:
+            await dbi.create_context(conn, context_name)
+    async with engine.begin() as conn:
+        for args in entrypoint_args:
+            await dbi.create_entrypoint(conn, *args)
+
+    statement = (
+        select(
+            dbi.model.entrypoints.c.user,
+            dbi.model.entrypoints.c.uuid,
+            dbi.model.entrypoints.c.entrypoint_name,
+            dbi.model.entrypoints.c.entrypoint_data
+        )
+    )
+
+    async with engine.begin() as conn:
+        results = await conn.execute(statement)
+    user, uuid, entrypoint_name, entrypoint_data = results.first()
+    new_entrypoint_name = entrypoint_name + "blah"
+    entrypoint_data["entrypoint_name"] = new_entrypoint_name
+
+    async with engine.begin() as conn:
+        await dbi.update_entrypoint_uuid(
+            conn, user, uuid, new_entrypoint_name, entrypoint_data
+        )
+
+    statement = (
+        select(
+            dbi.model.entrypoints.c.user,
+            dbi.model.entrypoints.c.uuid,
+            dbi.model.entrypoints.c.entrypoint_name,
+            dbi.model.entrypoints.c.entrypoint_data
+        )
+        .where(
+            dbi.model.entrypoints.c.uuid==uuid
+        )
+    )
+    async with engine.begin() as conn:
+        results = await conn.execute(statement)
+    user, uuid, entrypoint_name, entrypoint_data = results.first()
+    assert entrypoint_name == new_entrypoint_name
+    assert entrypoint_data["entrypoint_name"] == new_entrypoint_name
+
+@pytest.mark.asyncio
 async def test_fails(engine, context_names, entrypoint_args):
     async with engine.begin() as conn:
         for context_name in context_names:
@@ -45,4 +92,19 @@ async def test_fails(engine, context_names, entrypoint_args):
         async with engine.begin() as conn:
             await dbi.update_entrypoint(conn, *args)
 
+@pytest.mark.asyncio
+async def test_uuid_fails(engine, context_names, entrypoint_args):
+    async with engine.begin() as conn:
+        for context_name in context_names:
+            await dbi.create_context(conn, context_name)
+    async with engine.begin() as conn:
+        for args in entrypoint_args:
+            await dbi.create_entrypoint(conn, *args)
 
+    # Updating a non-existent entrypoint should fail
+
+    with pytest.raises(ValueError):
+        async with engine.begin() as conn:
+            await dbi.update_entrypoint_uuid(
+                conn, "b", "g" * 36, "wawa", {}
+            )
