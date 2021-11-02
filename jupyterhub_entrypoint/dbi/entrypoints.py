@@ -218,6 +218,7 @@ async def retrieve_many_entrypoints(
         grouper = itertools.groupby(rows, lambda r: r.entrypoint_type)
         data[context_name] = dict((
             entrypoint_type, [{
+                "uuid": r.uuid,
                 "entrypoint_data": r.entrypoint_data,
                 "selected": r.selected
             } for r in rows]
