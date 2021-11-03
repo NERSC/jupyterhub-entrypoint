@@ -1,5 +1,6 @@
 
 import itertools
+from uuid import uuid4
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import insert, select, update, delete
@@ -39,6 +40,7 @@ async def create_entrypoint(
         insert(entrypoints)
         .values(
             user=user,
+            uuid=str(uuid4()),
             entrypoint_name=entrypoint_name,
             entrypoint_type=entrypoint_type,
             entrypoint_data=entrypoint_data
@@ -70,13 +72,16 @@ async def create_entrypoint(
     )
     await conn.execute(statement)
 
-async def retrieve_one_entrypoint(conn, user, entrypoint_name):
-    """Retrieve data and contexts for a user's entrypoint by name.
+async def retrieve_one_entrypoint(conn, user, entrypoint_name=None, uuid=None):
+    """Retrieve data & contexts for a user's entrypoint either by name or UUID.
+
+    Specify `entrypoint_name` or `uuid` but not both.
 
     Args:
         conn            (AsyncConnection): SQLAlchemy asyncio connection proxy
         user            (str): User name
-        entrypoint_name (str): User-assigned entrypoint name
+        entrypoint_name (str, optional): User-assigned entrypoint name
+        uuid            (str, optional): Service-assigned UUID
 
     Returns:
         dict: Contains entrypoint data and list of context names
@@ -94,11 +99,31 @@ async def retrieve_one_entrypoint(conn, user, entrypoint_name):
         .select_from(entrypoints)
         .join(entrypoint_contexts, isouter=True)
         .join(contexts, isouter=True)
-        .where(
-            entrypoints.c.user == user,
-            entrypoints.c.entrypoint_name == entrypoint_name
-        )
     )
+
+    if entrypoint_name is None:
+        if uuid is None:
+            raise ValueError
+        else:
+            statement = (
+                statement
+                .where(
+                    entrypoints.c.user == user,
+                    entrypoints.c.uuid == uuid
+                )
+            )
+    else:
+        if uuid is None:
+            statement = (
+                statement
+                .where(
+                    entrypoints.c.user == user,
+                    entrypoints.c.entrypoint_name == entrypoint_name
+                )
+            )
+        else:
+            raise ValueError
+
     results = await conn.execute(statement)
 
     entrypoint_data = dict()
@@ -193,6 +218,7 @@ async def retrieve_many_entrypoints(
         grouper = itertools.groupby(rows, lambda r: r.entrypoint_type)
         data[context_name] = dict((
             entrypoint_type, [{
+                "uuid": r.uuid,
                 "entrypoint_data": r.entrypoint_data,
                 "selected": r.selected
             } for r in rows]
@@ -237,6 +263,45 @@ async def update_entrypoint(
         )
         .values(
            entrypoint_type=entrypoint_type,
+           entrypoint_data=entrypoint_data
+        )
+    )
+    results = await conn.execute(statement)
+    if results.rowcount == 0:
+        raise ValueError
+
+async def update_entrypoint_uuid(
+    conn,
+    user,
+    uuid,
+    entrypoint_name,
+    entrypoint_data
+):
+    """Update the user entrypoint with the given UUID.
+
+    This makes it possible to change the entrypoint type or entrypoint data.
+    Both must be supplied even if they are not being changed.
+
+    Args:
+        conn            (AsyncConnection): SQLAlchemy asyncio connection proxy
+        user            (str): User name
+        uuid            (str): Service-assigned UUID
+        entrypoint_name (str): User-assigned entrypoint name
+        entrypoint_data (dict): Type-specific metadata
+
+    Raises:
+        ValueError: If the entrypoint to update cannot be found.
+
+    """
+
+    statement = (
+        update(entrypoints)
+        .where(
+            entrypoints.c.user == user,
+            entrypoints.c.uuid == uuid
+        )
+        .values(
+           entrypoint_name=entrypoint_name,
            entrypoint_data=entrypoint_data
         )
     )

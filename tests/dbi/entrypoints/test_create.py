@@ -1,5 +1,6 @@
 
 import pytest
+from sqlalchemy.sql import select
 
 from jupyterhub_entrypoint import dbi
 
@@ -14,6 +15,13 @@ async def test_ok(engine, context_names, entrypoint_args):
     async with engine.begin() as conn:
         for args in entrypoint_args:
             await dbi.create_entrypoint(conn, *args)
+
+    # See if records were created, real basic...
+
+    statement = select(dbi.model.entrypoints)
+    async with engine.begin() as conn:
+        results = await conn.execute(statement)
+    assert len(list(results)) == len(entrypoint_args)
 
 @pytest.mark.asyncio
 async def test_contexts_ok(engine, context_names, entrypoint_args):

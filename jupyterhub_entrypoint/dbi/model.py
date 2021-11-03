@@ -1,6 +1,7 @@
 
 from sqlalchemy import (
-    Column, ForeignKey, Integer, JSON, MetaData, Table, Text, UniqueConstraint
+    Column, ForeignKey, Integer, JSON, MetaData,
+    String, Table, Text, UniqueConstraint
 )
 
 metadata = MetaData()
@@ -16,6 +17,7 @@ entrypoints = Table(
     "entrypoints",
     metadata,
     Column("id", Integer, primary_key=True),
+    Column("uuid", String(36), nullable=False, unique=True),
     Column("user", Text, nullable=False),
     Column("entrypoint_name", Text, nullable=False),
     Column("entrypoint_type", Text, nullable=False),

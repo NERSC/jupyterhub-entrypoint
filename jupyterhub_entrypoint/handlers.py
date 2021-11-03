@@ -173,7 +173,7 @@ class UpdateHandler(WebHandler):
         self.template_manage = self.env.get_template("manage.html")
 
     @authenticated
-    async def get(self, entrypoint_name):
+    async def get(self, uuid):
 
         context_name = self.get_query_argument("context")
 
@@ -184,7 +184,7 @@ class UpdateHandler(WebHandler):
 
         async with self.engine.begin() as conn:
             result = await dbi.retrieve_one_entrypoint(
-                conn, username, entrypoint_name
+                conn, username, uuid=uuid
             )
         entrypoint_data = result["entrypoint_data"]
         context_names = result["context_names"]
@@ -206,7 +206,8 @@ class UpdateHandler(WebHandler):
             context_name=context_name,
             checked_context_names=context_names,
             contexts=self.settings["contexts"],
-            entrypoint_data=entrypoint_data
+            entrypoint_data=entrypoint_data,
+            uuid=uuid
         )
         self.write(chunk)
 
@@ -253,14 +254,14 @@ class EntrypointAPIHandler(EntrypointHandler):
             self.write({"result": False, "message": "Error"})
 
     @authenticated
-    async def put(self, entrypoint_name):
+    async def put(self, uuid):
         """TBD"""
 
         user = self.get_current_user().get("name")
 
         async with self.engine.begin() as conn:
             result = await dbi.retrieve_one_entrypoint(
-                conn, user, entrypoint_name
+                conn, user, uuid=uuid
             )
         current_context_names = result["context_names"]
 
@@ -281,11 +282,11 @@ class EntrypointAPIHandler(EntrypointHandler):
                 )
             )
             async with self.engine.begin() as conn:
-                await dbi.update_entrypoint(
+                await dbi.update_entrypoint_uuid(
                     conn,
                     user,
+                    uuid,
                     entrypoint_data["entrypoint_name"],
-                    entrypoint_data["entrypoint_type"],
                     entrypoint_data
                 )
                 for context_name in to_tag:

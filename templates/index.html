@@ -119,7 +119,7 @@
           {{entrypoint.entrypoint_data.entrypoint_name}}
         </label>
         <span class="pull-right">
-          <a class="btn btn-primary btn-sm" href="{{service_prefix}}entrypoints/{{entrypoint.entrypoint_data.entrypoint_name}}?context={{context_name}}" type="button">
+          <a class="btn btn-primary btn-sm" href="{{service_prefix}}entrypoints/{{entrypoint.uuid}}?context={{context_name}}" type="button">
             update
           </a>
           <button type="button" onclick="deleteEntrypoint('{{entrypoint.entrypoint_data.entrypoint_name}}')" class="btn btn-danger btn-sm">
