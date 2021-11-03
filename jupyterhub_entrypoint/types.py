@@ -58,12 +58,10 @@ class EntrypointType:
         self.schema = {
             "type": "object",
             "properties": {
-                "user": {"type": "string"},
-                "entrypoint_name": {"type": "string", "pattern": "^[a-z0-9.\-_]+$"},
-                "entrypoint_type": {"type": "string"},
+                "entrypoint_name": {"type": "string"},
             },
             "required": [
-                "user", "entrypoint_name", "entrypoint_type"
+                "entrypoint_name"
             ]
         }
 
@@ -164,8 +162,6 @@ class EntrypointType:
 
         """
 
-        if name in ["user", "entrypoint_type"]:
-            return ""
         prop = self.schema["properties"][name]
         options = await self.get_options(name, prop)
         if options:
