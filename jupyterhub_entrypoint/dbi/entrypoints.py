@@ -84,7 +84,7 @@ async def retrieve_one_entrypoint(conn, user, entrypoint_name=None, uuid=None):
         uuid            (str, optional): Service-assigned UUID
 
     Returns:
-        dict: Contains entrypoint data and list of context names
+        dict: Contains entrypoint type, data, and list of context names
 
     Raises:
         ValueError: If no entrypoint named `entrypoint_name` is found.
