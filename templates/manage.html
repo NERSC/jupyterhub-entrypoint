@@ -71,11 +71,8 @@
 
 async function addHandler() {
 
-    let entrypoint_data = {
-        user: "{{user.name}}",
-        entrypoint_type: "{{entrypoint_type.type_name}}",
-    };
-
+    let entrypoint_type = "{{entrypoint_type.type_name}}";
+    let entrypoint_data = {};
     let context_names = [];
 
     $("#form :input").each(function(index) {
@@ -89,7 +86,7 @@ async function addHandler() {
         }
     });
 
-    result = await addEntrypoint(entrypoint_data, context_names);
+    result = await addEntrypoint(entrypoint_type, entrypoint_data, context_names);
 
     if (!result.result) {
         $("#error-msg").html(`<div class="alert alert-danger" role="alert">${result.message}</div>`);
@@ -102,8 +99,9 @@ async function addHandler() {
 
 // Add user entrypoint
 
-async function addEntrypoint(entrypoint_data, context_names) {
+async function addEntrypoint(entrypoint_type, entrypoint_data, context_names) {
     const payload = {
+        entrypoint_type: entrypoint_type,
         entrypoint_data: entrypoint_data,
         context_names: context_names
     };
@@ -120,11 +118,7 @@ async function addEntrypoint(entrypoint_data, context_names) {
 
 async function updateHandler() {
 
-    let entrypoint_data = {
-        user: "{{user.name}}",
-        entrypoint_type: "{{entrypoint_type.type_name}}",
-    };
-
+    let entrypoint_data = {};
     let context_names = [];
 
     $("#form :input").each(function(index) {
