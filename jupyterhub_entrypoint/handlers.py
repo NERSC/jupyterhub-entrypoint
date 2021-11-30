@@ -186,10 +186,10 @@ class UpdateHandler(WebHandler):
             result = await dbi.retrieve_one_entrypoint(
                 conn, username, uuid=uuid
             )
+        entrypoint_type_name = result["entrypoint_type_name"]
         entrypoint_data = result["entrypoint_data"]
         context_names = result["context_names"]
 
-        entrypoint_type_name = entrypoint_data["entrypoint_type"]
         entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
         if entrypoint_type is None:
             raise WebError(404)
@@ -232,8 +232,9 @@ class EntrypointAPIHandler(EntrypointHandler):
 
         try:
             payload = json_decode(self.request.body)
+            entrypoint_type_name = payload["entrypoint_type"]
             entrypoint_data = payload["entrypoint_data"]
-            await self.validate_entrypoint_data(user, entrypoint_data)
+            await self.validate_entrypoint_data(user, entrypoint_type_name, entrypoint_data)
             context_names = payload["context_names"] or self.context_names
             self.validate_context_names(context_names)
             async with self.engine.begin() as conn:
@@ -241,7 +242,7 @@ class EntrypointAPIHandler(EntrypointHandler):
                     conn,
                     user,
                     entrypoint_data["entrypoint_name"],
-                    entrypoint_data["entrypoint_type"],
+                    entrypoint_type_name,
                     entrypoint_data,
                     context_names
                 )
@@ -263,12 +264,13 @@ class EntrypointAPIHandler(EntrypointHandler):
             result = await dbi.retrieve_one_entrypoint(
                 conn, user, uuid=uuid
             )
+        entrypoint_type_name = result["entrypoint_type_name"]
         current_context_names = result["context_names"]
 
         try:
             payload = json_decode(self.request.body)
             entrypoint_data = payload["entrypoint_data"]
-            await self.validate_entrypoint_data(user, entrypoint_data)
+            await self.validate_entrypoint_data(user, entrypoint_type_name, entrypoint_data)
             context_names = payload["context_names"] or self.context_names
             self.validate_context_names(context_names)
             to_tag = list(
@@ -311,7 +313,12 @@ class EntrypointAPIHandler(EntrypointHandler):
             self.log.error(f"Error ({e}): {entrypoint_data}")
             self.write({"result": False, "message": "Error"})
 
-    async def validate_entrypoint_data(self, user, entrypoint_data):
+    async def validate_entrypoint_data(
+        self,
+        user,
+        entrypoint_type_name,
+        entrypoint_data
+    ):
         """Validate request and run appropriate validator on entrypoint data.
 
         Raises:
@@ -320,12 +327,7 @@ class EntrypointAPIHandler(EntrypointHandler):
 
         """
 
-        if user != entrypoint_data.get("user"):
-            raise EntrypointValidationError
-
-        entrypoint_type = self.entrypoint_types.get(
-            entrypoint_data["entrypoint_type"]
-        )
+        entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
         if isinstance(entrypoint_type, EntrypointType):
             await entrypoint_type.validate(entrypoint_data)
             return
@@ -390,17 +392,14 @@ class HubSelectionAPIHandler(BaseHandler):
 
         try:
             async with self.engine.begin() as conn:
-                entrypoint_data = await dbi.retrieve_selection(
+                result = await dbi.retrieve_selection(
                     conn,
                     user,
                     context_name
                 )
         except ValueError:
             raise HTTPError(404)
-
-        entrypoint_type = self.entrypoint_types.get(
-            entrypoint_data["entrypoint_type"]
-        )
+        entrypoint_type_name, entrypoint_data = result
 
         cmd = list()
         if isinstance(entrypoint_type, EntrypointType):

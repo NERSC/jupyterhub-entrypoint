@@ -84,7 +84,7 @@ async def retrieve_one_entrypoint(conn, user, entrypoint_name=None, uuid=None):
         uuid            (str, optional): Service-assigned UUID
 
     Returns:
-        dict: Contains entrypoint data and list of context names
+        dict: Contains entrypoint type, data, and list of context names
 
     Raises:
         ValueError: If no entrypoint named `entrypoint_name` is found.
@@ -93,6 +93,7 @@ async def retrieve_one_entrypoint(conn, user, entrypoint_name=None, uuid=None):
 
     statement = (
         select(
+            entrypoints.c.entrypoint_type,
             entrypoints.c.entrypoint_data,
             contexts.c.context_name
         )
@@ -129,6 +130,7 @@ async def retrieve_one_entrypoint(conn, user, entrypoint_name=None, uuid=None):
     entrypoint_data = dict()
     context_names = list()
     for r in results.fetchall():
+        entrypoint_type = r.entrypoint_type
         entrypoint_data = r.entrypoint_data
         context_names.append(r.context_name)
     if len(context_names) == 1 and context_names[0] is None:
@@ -137,7 +139,11 @@ async def retrieve_one_entrypoint(conn, user, entrypoint_name=None, uuid=None):
     if not entrypoint_data:
         raise ValueError
 
-    return dict(entrypoint_data=entrypoint_data, context_names=context_names)
+    return dict(
+        entrypoint_type_name=entrypoint_type,
+        entrypoint_data=entrypoint_data,
+        context_names=context_names
+    )
 
 async def retrieve_many_entrypoints(
     conn,

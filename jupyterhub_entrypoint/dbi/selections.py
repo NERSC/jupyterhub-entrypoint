@@ -85,7 +85,10 @@ async def retrieve_selection(conn, user, context_name):
         context_name    (str): Context used to find selection
 
     Returns:
-        dict: User entrypoint data
+        (tuple): tuple containing:
+
+            str: Entrypoint type
+            dict: User entrypoint data
 
     Raises:
         ValueError: If no selection is found.
@@ -94,6 +97,7 @@ async def retrieve_selection(conn, user, context_name):
 
     statement = (
         select(
+            entrypoints.c.entrypoint_type,
             entrypoints.c.entrypoint_data,
         )
         .select_from(entrypoints)
@@ -109,7 +113,7 @@ async def retrieve_selection(conn, user, context_name):
     if not result:
         raise ValueError
 
-    return result.entrypoint_data
+    return (result.entrypoint_type, result.entrypoint_data)
 
 async def delete_selection(conn, user, context_name):
     """Delete user entrypoint selection for the given context name.

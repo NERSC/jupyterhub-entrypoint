@@ -26,9 +26,10 @@ async def test_ok(engine, context_names, entrypoint_args):
 
     async with engine.begin() as conn:
         output_data = await dbi.retrieve_selection(conn, user, context_names[1])
-    assert len(output_data) == len(args[-2])
+    entrypoint_type_name, entrypoint_data = output_data
+    assert len(entrypoint_data) == len(args[-2])
     for key in args[-2]:
-        assert output_data[key] == args[-2][key]
+        assert entrypoint_data[key] == args[-2][key]
 
 @pytest.mark.asyncio
 async def test_unknown(engine, context_names, entrypoint_args):

@@ -19,11 +19,14 @@ async def test_ok(engine, context_names, entrypoint_args):
     user, entrypoint_name = args[0], args[1]
     async with engine.begin() as conn:
         output = await dbi.retrieve_one_entrypoint(conn, user, entrypoint_name)
-    assert len(output) == 2
+    assert len(output) == 3
+    assert "entrypoint_type_name" in output
     assert "entrypoint_data" in output
     assert "context_names" in output
+    output_entrypoint_type_name = output["entrypoint_type_name"]
     output_entrypoint_data = output["entrypoint_data"]
     output_context_names = output["context_names"]
+    assert output_entrypoint_type_name == args[2]
     for key in args[3]:
         assert output_entrypoint_data[key] == args[3][key]
     assert len(output_context_names) == len(args[4])
@@ -43,12 +46,13 @@ async def test_name_xor_uuid(engine, context_names, entrypoint_args):
 
     statement = select(
         dbi.model.entrypoints.c.user,
+        dbi.model.entrypoints.c.entrypoint_type,
         dbi.model.entrypoints.c.entrypoint_name,
         dbi.model.entrypoints.c.uuid
     )
     async with engine.begin() as conn:
         results = await conn.execute(statement)
-    user, entrypoint_name, uuid = results.first()
+    user, entrypoint_type_name, entrypoint_name, uuid = results.first()
 
     # No entrypoint or UUID should fail
 
@@ -66,9 +70,11 @@ async def test_name_xor_uuid(engine, context_names, entrypoint_args):
 
     async with engine.begin() as conn:
         output = await dbi.retrieve_one_entrypoint(conn, user, entrypoint_name)
-        assert len(output) == 2
+        assert len(output) == 3
+        assert "entrypoint_type_name" in output
         assert "entrypoint_data" in output
         assert "context_names" in output
+        assert output["entrypoint_type_name"] == entrypoint_type_name
         assert output["entrypoint_data"]["user"] == user
         assert output["entrypoint_data"]["entrypoint_name"] == entrypoint_name
 
@@ -76,9 +82,11 @@ async def test_name_xor_uuid(engine, context_names, entrypoint_args):
 
     async with engine.begin() as conn:
         output = await dbi.retrieve_one_entrypoint(conn, user, uuid=uuid)
-        assert len(output) == 2
+        assert len(output) == 3
+        assert "entrypoint_type_name" in output
         assert "entrypoint_data" in output
         assert "context_names" in output
+        assert output["entrypoint_type_name"] == entrypoint_type_name
         assert output["entrypoint_data"]["user"] == user
         assert output["entrypoint_data"]["entrypoint_name"] == entrypoint_name
 
@@ -95,16 +103,19 @@ async def test_uuid(engine, context_names, entrypoint_args):
 
     statement = select(
         dbi.model.entrypoints.c.user,
+        dbi.model.entrypoints.c.entrypoint_type,
         dbi.model.entrypoints.c.uuid
     )
     async with engine.begin() as conn:
         results = await conn.execute(statement)
         for result in results:
-            user, uuid = result
+            user, entrypoint_type_name, uuid = result
             output = await dbi.retrieve_one_entrypoint(conn, user, uuid=uuid)
-            assert len(output) == 2
+            assert len(output) == 3
+            assert "entrypoint_type_name" in output
             assert "entrypoint_data" in output
             assert "context_names" in output
+            assert output["entrypoint_type_name"] == entrypoint_type_name
             assert output["entrypoint_data"]["user"] == user
 
 @pytest.mark.asyncio
