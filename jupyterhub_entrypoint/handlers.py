@@ -400,6 +400,7 @@ class HubSelectionAPIHandler(BaseHandler):
         except ValueError:
             raise HTTPError(404)
         entrypoint_type_name, entrypoint_data = result
+        entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
 
         cmd = list()
         if isinstance(entrypoint_type, EntrypointType):

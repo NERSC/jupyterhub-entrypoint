@@ -42,7 +42,7 @@ async def pre_spawn_hook(spawner):
     client = AsyncHTTPClient()
     try:
         response = await client.fetch(
-            f"http://127.0.0.1:8889/services/entrypoint/api/hub/users/{user}/selections/hal",
+            f"http://127.0.0.1:8889/services/entrypoint/api/users/{user}/selections/hal",
             headers={"Authorization": f"token {os.environ['ENTRYPOINT_API_TOKEN']}"}
         )
     except Exception as e:
