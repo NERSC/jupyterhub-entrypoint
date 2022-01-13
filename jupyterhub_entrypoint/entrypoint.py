@@ -1,5 +1,6 @@
 
 import asyncio
+import binascii
 from collections import OrderedDict
 import logging
 import os
@@ -7,6 +8,7 @@ import sys
 
 from jupyterhub.log import CoroutineLogFormatter
 from jupyterhub._data import DATA_FILES_PATH
+from jupyterhub.services.auth import HubOAuthCallbackHandler
 from jupyterhub.utils import url_path_join
 from jupyterhub.handlers.static import LogoHandler
 from tornado.ioloop import IOLoop
@@ -45,6 +47,11 @@ class EntrypointService(config.Application):
     config_file = Unicode(
         "entrypoint_config.py",
         help="Config file to load"
+    ).tag(config=True)
+
+    cookie_secret_file = Unicode(
+        "jupyterhub-entrypoint-cookie-secret",
+        help="File containing cookie secret"
     ).tag(config=True)
 
     database_url = Unicode(
@@ -185,9 +192,16 @@ class EntrypointService(config.Application):
             entrypoint_type = cls(*args)
             self.entrypoint_types[entrypoint_type.type_name] = entrypoint_type
 
+        # Cookie secret
+
+        with open(self.cookie_secret_file) as f:
+            cookie_secret_text = f.read().strip()
+        cookie_secret = binascii.a2b_hex(cookie_secret_text)
+
         # Configure handlers and launch Tornado app
 
         self.settings = {
+            "cookie_secret": cookie_secret,
             "service_prefix": self.service_prefix,
             "entrypoint_api_token": self.entrypoint_api_token,
             "static_path": os.path.join(self.data_files_path, "static"),
@@ -208,6 +222,9 @@ class EntrypointService(config.Application):
                 self.service_prefix,
                 RedirectHandler,
                 dict(url=default_context_url)
+            ), (
+                self.service_prefix + "oauth_callback",
+                HubOAuthCallbackHandler
             ), (
                 self.service_prefix + "about",
                 AboutHandler

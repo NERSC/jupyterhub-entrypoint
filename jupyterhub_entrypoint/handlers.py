@@ -3,7 +3,7 @@ import logging
 import os
 
 from jinja2 import Environment, FileSystemLoader
-from jupyterhub.services.auth import HubAuthenticated
+from jupyterhub.services.auth import HubOAuthenticated
 from jupyterhub.utils import url_path_join
 from tornado.escape import json_decode
 from tornado.web import authenticated, HTTPError, RequestHandler
@@ -31,7 +31,7 @@ class BaseHandler(RequestHandler):
         )
 
 
-class EntrypointHandler(HubAuthenticated, BaseHandler):
+class EntrypointHandler(HubOAuthenticated, BaseHandler):
     """TBD"""
 
 
