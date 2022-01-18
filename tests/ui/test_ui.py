@@ -1,133 +1,167 @@
-import os
 import time
+import os
+
 from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.support.ui import WebDriverWait
 
 
-class Test():
-    def setup_method(self, method):
-        options = Options()
-        options.headless = True
-        self.driver = webdriver.Firefox(options=options)
-        self.vars = {}
+# noinspection SpellCheckingInspection
+class ManageEntrypoint:
+    def __init__(self, user, password, use_shifter):
+        self.user = user
+        self.password = password
+        self.use_shifter = use_shifter
+        self.options = Options()
+        self.options.headless = os.environ.get('HEADLESS_BROWSER', 'True').lower() == 'true'
+        self.driver = webdriver.Firefox(options=self.options)
 
-    def teardown_method(self, method):
+    def shutdown(self):
         self.driver.quit()
 
-    def wait_for_window(self, timeout=2):
-        time.sleep(round(timeout / 1000))
-        wh_now = self.driver.window_handles
-        wh_then = self.vars["window_handles"]
-        if len(wh_now) > len(wh_then):
-            return set(wh_now).difference(set(wh_then)).pop()
+    def slow_down(self):
+        if not self.options.headless:
+            time.sleep(1)
 
-    def test(self):
+    def start(self):
         self.login()
-        self.check_titles()
+        self.open_entrypoint_view()
         self.add_entrypoint()
         self.select_entrypoint()
+        self.cancel_update_entrypoint()
+        self.update_entrypoint()
         self.clear_entrypoint()
         self.delete_entrypoint()
 
     def login(self):
         # Open the browser
-        self.driver.get('http://localhost:8000')
+        url = os.environ.get('HUB_URL', 'http://localhost:8000')
+        self.driver.get(url)
         self.driver.implicitly_wait(10)
 
         # Login with dummy credentials
-        username = self.driver.find_element_by_id('username_input')
-        password = self.driver.find_element_by_id('password_input')
+        self.driver.find_element(By.ID, 'username_input').send_keys(self.user)
+        self.driver.find_element(By.ID, 'password_input').send_keys(self.password)
+        self.slow_down()
+        self.driver.find_element(By.ID, 'login_submit').click()
 
-        username.send_keys('admin')
-        password.send_keys('admin')
-
-        login_button = self.driver.find_element_by_id('login_submit')
-        login_button.click()
-
+    def open_entrypoint_view(self):
         # Open the services tab, then the entrypoint view
-        services_button = self.driver.find_elements_by_xpath(
-            "//*[contains(text(), 'Services')]")[0]
+        services_button = self.driver.find_elements(By.XPATH, "//*[contains(text(), 'Services')]")[0]
         services_button.click()
 
-        entrypoint_button = self.driver.find_elements_by_xpath(
-            "//*[contains(text(), 'entrypoint')]")[0]
+        entrypoint_button = self.driver.find_elements(By.XPATH, "//*[contains(text(), 'entrypoint')]")[0]
         entrypoint_button.click()
 
-    def check_titles(self):
-        # Make sure the page renders with the correct titles
-        title = self.driver.find_element_by_id('title')
-        assert title.text == 'JupyterHub Entrypoint Service'
+        for el in self.driver.find_elements(By.XPATH, '//input'):
+            if el.get_attribute('value') == 'Authorize':
+                self.slow_down()
+                el.click()
+                break
 
-        elem = self.driver.find_elements_by_xpath(
-            "//*[contains(text(), 'Manage trusted script entrypoints')]")
-        assert len(elem) == 1
-
-        elem = self.driver.find_elements_by_xpath(
-            "//*[contains(text(), 'Selected entrypoint for multivac')]")
-        assert len(elem) == 1
+        elem = self.driver.find_element(By.XPATH, "//*[contains(text(), 'Favorite Entrypoint')]")
+        assert 'None' in elem.text
+        elems = self.driver.find_elements(By.NAME, 'selected_entrypoint')
+        assert len(elems) == 1 and elems[0].is_selected() and elems[0].get_attribute('value') == ''
 
     def add_entrypoint(self):
-        elem = self.driver.find_element_by_id('add-trusted_script-button')
-        elem.click()
+        if self.use_shifter:
+            elem = self.driver.find_element(By.XPATH, "//*[contains(text(), 'Shifter Entrypoints')]")
+        else:
+            elem = self.driver.find_element(By.XPATH, "//*[contains(text(), 'Trusted Script Entrypoints')]")
 
-        name_input = self.driver.find_element_by_name('entrypoint_name')
+        self.try_click(elem.find_element(By.XPATH, './/a'))
+
+        name_input = self.driver.find_element(By.NAME, 'entrypoint_name')
         name_input.send_keys('my-env')
+        self.driver.find_element(By.NAME, 'image' if self.use_shifter else 'script').click()
+        if self.use_shifter:
+            opt = self.driver.find_element(By.XPATH,
+                                           "//option[contains(text(), 'jenkins:latest')]")
+        else:
+            opt = self.driver.find_element(By.XPATH,
+                                           "//option[contains(text(), '/usr/local/bin/example-entrypoint.sh')]")
 
-        elem = self.driver.find_element_by_name('script')
-        elem.click()
+        opt.click()
+        self.slow_down()
+        self.driver.find_element(By.XPATH, "//button[contains(text(), 'Submit')]").click()
 
-        path_input = self.driver.find_element_by_xpath(
-            "//option[contains(text(), '/usr/local/bin/example-entrypoint.sh')]"
-        )
-        path_input.click()
+    '''
+    We use thiss loop to workaround exception "not clickable because another element obscures it"
+    Interestingly we only see this exception  when testing shifter environment. 
+    '''
+    @staticmethod
+    def try_click(elem):
+        from selenium.common.exceptions import ElementClickInterceptedException
+        i = 0
+        while True:
+            try:
+                elem.click()
+                break
+            except ElementClickInterceptedException as e:
+                i += 1
 
-        elem = self.driver.find_element_by_xpath(
-            "//button[contains(text(), 'Add entrypoint')]")
-        elem.click()
-
-        # FIXME put in API calls to check it was added correctly
+                if i == 100:
+                    raise e
+                time.sleep(0.2)
 
     def select_entrypoint(self):
-        elem = self.driver.find_element_by_id('trusted_script')
-        elem.click()
-
-        elem = self.driver.find_element_by_xpath(
-            "//option[contains(text(), 'my-env')]")
-        elem.click()
-
-        elem = self.driver.find_element_by_id('select-trusted_script-button')
-        elem.click()
-
-        # make an API call to test it was set correctly
-        elem = self.driver.find_element_by_id('current-entrypoint')
+        elems = self.driver.find_elements(By.NAME, 'selected_entrypoint')
+        elems = list(filter(lambda e: e.get_attribute('value') == 'my-env', elems))
+        self.try_click(elems[0])
+        self.slow_down()
+        elem = self.driver.find_element(By.XPATH, "//*[contains(text(), 'Favorite Entrypoint')]")
         assert 'my-env' in elem.text
 
+    def cancel_update_entrypoint(self):
+        button = self.driver.find_element(By.XPATH, "//button[contains(text(), 'delete')]")
+        button = button.find_element(By.XPATH, './..').find_element(By.XPATH, './/a')
+        self.try_click(button)
+        button = self.driver.find_element(By.XPATH, "//button[contains(text(), 'Submit')]")
+        button = button.find_element(By.XPATH, './..').find_element(By.XPATH, './/a')
+        self.slow_down()
+        button.click()
+        elem = self.driver.find_element(By.XPATH, "//*[contains(text(), 'Favorite Entrypoint')]")
+        assert 'my-env' in elem.text
+
+    def update_entrypoint(self):
+        button = self.driver.find_element(By.XPATH, "//button[contains(text(), 'delete')]")
+        button = button.find_element(By.XPATH, './..').find_element(By.XPATH, './/a')
+        self.try_click(button)
+        name_input = self.driver.find_element(By.NAME, 'entrypoint_name')
+        name_input.send_keys('updated-env')
+        button = self.driver.find_element(By.XPATH, "//button[contains(text(), 'Submit')]")
+        self.slow_down()
+        button.click()
+        elem = self.driver.find_element(By.XPATH, "//*[contains(text(), 'Favorite Entrypoint')]")
+        assert 'updated-env' in elem.text
+
     def clear_entrypoint(self):
-        elem = self.driver.find_element_by_id('clear-selection-button')
-        elem.submit()
-
-        import time
-        time.sleep(1)
-
-        # check that the entrypoint was cleared
-        elem = self.driver.find_element_by_id('current-entrypoint')
-        assert elem.text == 'None'
+        elems = self.driver.find_elements(By.NAME, 'selected_entrypoint')
+        list(filter(lambda e: e.get_attribute('value') == '', elems))[0].click()
+        self.slow_down()
+        elem = self.driver.find_element(By.XPATH, "//*[contains(text(), 'Favorite Entrypoint')]")
+        assert 'None' in elem.text
 
     def delete_entrypoint(self):
-        elem = self.driver.find_element_by_id('trusted_script')
-        elem.click()
-
-        elem = self.driver.find_element_by_xpath(
-            "//option[contains(text(), 'my-env')]")
-        elem.click()
-
-        elem = self.driver.find_element_by_xpath(
-            "//button[contains(text(), 'delete')]")
-        elem.click()
-
-        WebDriverWait(self.driver, 10).until(EC.alert_is_present())
+        button = self.driver.find_element(By.XPATH, "//button[contains(text(), 'delete')]")
+        self.try_click(button)
+        WebDriverWait(self.driver, 10).until(ec.alert_is_present())
         self.driver.switch_to.alert.accept()
+        time.sleep(1)
+        elems = self.driver.find_elements(By.NAME, 'selected_entrypoint')
+        assert len(elems) == 1 and elems[0].is_selected()
 
-        # FIXME make an API call to test it was deleted correctly
+
+def test1():
+    t = ManageEntrypoint('admin', 'admin', False)
+    t.start()
+    t.shutdown()
+
+
+def test2():
+    t = ManageEntrypoint('user1', 'user1', True)
+    t.start()
+    t.shutdown()

@@ -1,0 +1,76 @@
+name: Build
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  example:
+    runs-on: ubuntu-latest
+    steps:
+      # Get the current repo files and
+      - name: Checkout and list files repository
+        uses: actions/checkout@v2
+
+      - name: List files repository
+        run: |
+          ls ${{ github.workspace }}
+
+      - name: Prepare
+        id: prep
+        run: |
+          TAG=latest
+          IMAGE="example_entrypoint"
+          TEST_IMAGE="test_example_entrypoint"
+          echo ::set-output name=tagged_image::${IMAGE}:${TAG}
+          echo ::set-output name=tagged_test_image::${TEST_IMAGE}:${TAG}
+          echo ::set-output name=tag::${TAG}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-single-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-single-buildx
+
+      - name: Build example image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          builder: ${{ steps.buildx.outputs.name }}
+          file: example/Dockerfile
+          push: false
+          load: true
+          tags: ${{ steps.prep.outputs.tagged_image }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new
+
+      - name: Build test image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          builder: ${{ steps.buildx.outputs.name }}
+          file: example/Dockerfile.test
+          push: false
+          load: true
+          tags: ${{ steps.prep.outputs.tagged_test_image }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Run Tests
+        run: |
+          docker network create -d bridge example-network
+          docker run --rm --name=juphub -h juphub --network example-network -td ${{ steps.prep.outputs.tagged_image }}
+          sleep 1
+          docker logs juphub
+          # Test sequentially
+          IMAGE=${{ steps.prep.outputs.tagged_test_image }}
+          docker run --rm --network example-network -e HUB_URL='http://juphub:8000' -t $IMAGE pytest -s tests/ui/
+          # Test in parallel 
+          docker run --rm --network example-network -e HUB_URL='http://juphub:8000' -t $IMAGE pytest -n 2 tests/ui/

@@ -1,0 +1,15 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV TERM linux
+
+RUN apt-get update --fix-missing && \
+    apt-get install -y firefox-geckodriver python3-pip && \
+    apt-get -qq purge && apt-get -qq clean && rm -rf /var/lib/apt/lists/*
+    
+ENV HEADLESS_BROWSER TRUE
+ENV HUB_URL http://localhost:8000
+
+ADD . .
+
+RUN python3 -m pip install --no-cache -r test-requirements.txt
