@@ -1,4 +1,4 @@
-FROM jupyterhub/jupyterhub
+FROM jupyterhub/jupyterhub:1.5.0
 
 RUN \
     python3 -m pip install --no-cache   \
@@ -24,6 +24,7 @@ RUN \
         docker-entrypoint.sh                                            \
         entrypoint_config.py                                            \
         image-server.py                                                 \
+        jupyterhub-entrypoint-cookie-secret                             \
         jupyterhub_config.py                                            \
         ../../..                                                    &&  \
     cd ../../..                                                     &&  \

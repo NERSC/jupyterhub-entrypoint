@@ -1,0 +1,6 @@
+aiosqlite 
+sqlalchemy
+pytest
+pytest-asyncio
+pytest-xdist
+selenium

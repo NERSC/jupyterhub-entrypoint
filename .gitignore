@@ -140,3 +140,6 @@ secrets
 
 # to ignore entrypoint data files
 *.json
+
+# PyCharm
+.idea
