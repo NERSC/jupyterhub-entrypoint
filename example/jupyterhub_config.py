@@ -14,6 +14,7 @@ c.JupyterHub.services = [{
     "display": True,
     "name": "entrypoint",
     "command": ["python3", "-m", "jupyterhub_entrypoint"],
+    "oauth_no_confirm": True,
     "url": "http://127.0.0.1:8889",
     "environment": {
         "ENTRYPOINT_API_TOKEN": os.environ["ENTRYPOINT_API_TOKEN"]
@@ -23,6 +24,13 @@ c.JupyterHub.services = [{
     "name": "images",
     "command": ["python3", "./image-server.py"],
     "url": "http://127.0.0.1:8890"
+}]
+
+# Role needed for user to access services in Hub 2.x
+
+c.JupyterHub.load_roles = [{
+    "name": "user",
+    "scopes": ["access:services", "self"]
 }]
 
 # Set cmd to jupyter-labhub because it's awesome
