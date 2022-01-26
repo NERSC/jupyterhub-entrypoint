@@ -172,15 +172,32 @@ class EntrypointService(config.Application):
             future=True
         )
 
-        # FIXME for now we always initialize the database for testing...
+        # Initialize database
 
         async def init_db(engine):
             async with engine.begin() as conn:
                 await dbi.init_db(conn)
 
+            # Get contexts from database
+            # Drop contexts in database but not in config
+            # Add contexts in config but not in database
+
             async with engine.begin() as conn:
-                for context in self.contexts:
-                    await dbi.create_context(conn, context["context_name"])
+
+                database_contexts = set(
+                    await dbi.retrieve_contexts(conn)
+                )
+                config_contexts = set(
+                    [context["context_name"] for context in self.contexts]
+                )
+
+                drop_contexts = database_contexts - config_contexts
+                create_contexts = config_contexts - database_contexts
+
+                for context_name in drop_contexts:
+                    await dbi.delete_context(conn, context_name)
+                for context_name in create_contexts:
+                    await dbi.create_context(conn, context_name)
 
         loop = asyncio.get_event_loop()
         coroutine = init_db(engine)
