@@ -54,7 +54,7 @@ class EntrypointType:
 
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.schema = {
             "type": "object",
             "properties": {
@@ -64,6 +64,8 @@ class EntrypointType:
                 "entrypoint_name"
             ]
         }
+        self.batchspawner = kwargs.get("batchspawner", True)
+        self.executable = kwargs.get("executable", "jupyter-labhub")
 
     def extend_schema(self, properties):
         """Extend the base schema used for validating user entrypoint data.
@@ -392,7 +394,7 @@ class TrustedScriptEntrypointType(EntrypointType):
 
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         """Initialize the trusted script entrypoint type.
 
         Args:
@@ -400,7 +402,7 @@ class TrustedScriptEntrypointType(EntrypointType):
 
         """
 
-        super().__init__()
+        super().__init__(**kwargs)
         self.extend_schema([{"script": {"type": "string", "enum": list(args)}}])
 
     def spawner_args(self, entrypoint_data):
@@ -414,12 +416,17 @@ class TrustedScriptEntrypointType(EntrypointType):
 
         """
 
-        return {
-            "cmd": [
-                entrypoint_data["script"],
-                "jupyter-labhub"
+        doc = dict()
+        script = entrypoint_data["script"]
+        if self.batchspawner:
+            doc["cmd"] = [self.executable]
+            doc["batchspawner_singleuser_cmd"] = [
+                script,
+                "batchspawner-singleuser"
             ]
-        }
+        else:
+            doc["cmd"] = [script, self.executable]
+        return doc
 
     def get_type_name(self):
         """Override default type name behavior."""
@@ -455,7 +462,7 @@ class TrustedPathEntrypointType(EntrypointType):
 
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         """Initialize the trusted path entrypoint type.
 
         Args:
@@ -463,7 +470,7 @@ class TrustedPathEntrypointType(EntrypointType):
 
         """
 
-        super().__init__()
+        super().__init__(**kwargs)
         self.extend_schema([{"path": {"type": "string", "enum": list(args)}}])
 
     def spawner_args(self, entrypoint_data):
@@ -477,11 +484,13 @@ class TrustedPathEntrypointType(EntrypointType):
 
         """
 
-        return {
-            "cmd": [
-                os.path.join(entrypoint_data["path"], "jupyter-labhub")
+        path = Path(entrypoint_data["path"])
+        doc = dict(cmd=[str(path / self.executable)])
+        if self.batchspawner:
+            doc["batchspawner_singleuser_cmd"] = [
+                str(path / "batchspawner-singleuser")
             ]
-        }
+        return doc
 
     def get_type_name(self):
         """Override default type name behavior."""
@@ -515,7 +524,12 @@ class ShifterEntrypointType(EntrypointType):
 
     """
 
-    def __init__(self, shifter_api_url, shifter_api_token=None):
+    def __init__(
+        self,
+        shifter_api_url,
+        shifter_api_token=None,
+        **kwargs
+    ):
         """Initialize the Shifter entrypoint type.
 
         Args:
@@ -524,7 +538,7 @@ class ShifterEntrypointType(EntrypointType):
 
         """
 
-        super().__init__()
+        super().__init__(**kwargs)
         self.shifter_api_url = shifter_api_url
         self.shifter_api_token = (
             shifter_api_token or os.environ["SHIFTER_API_TOKEN"]
@@ -542,13 +556,18 @@ class ShifterEntrypointType(EntrypointType):
 
         """
 
-        return {
-            "cmd": [
+        doc = dict()
+        image = entrypoint_data["image"]
+        if self.batchspawner:
+            doc["cmd"] = [self.executable]
+            doc["batchspawner_singleuser_cmd"] = [
                 "shifter",
-                f"--image={entrypoint_data['image']}",
-                "jupyter-labhub"
+                f"--image={image}",
+                "batchspawner-singleuser"
             ]
-        }
+        else:
+            doc["cmd"] = ["shifter", f"--image={image}", self.executable]
+        return doc
 
     def get_description(self):
         """Override default description behavior."""
