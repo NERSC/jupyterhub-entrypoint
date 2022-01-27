@@ -404,8 +404,22 @@ class HubSelectionAPIHandler(BaseHandler):
 
         spawner_args = dict()
         if isinstance(entrypoint_type, EntrypointType):
-            spawner_args = entrypoint_type.spawner_args(entrypoint_data)
+            kwargs = self.parse_query_arguments()
+            spawner_args = entrypoint_type.spawner_args(
+                entrypoint_data,
+                **kwargs
+            )
         self.write(spawner_args)
+
+    def parse_query_arguments(self):
+        """TBD"""
+
+        kwargs = dict()
+
+        batchspawner = self.get_query_argument("batchspawner", "false").lower()
+        kwargs["batchspawner"] = batchspawner in ["true", "yes", "1"]
+
+        return kwargs
 
     def validate_token(self):
         """TBD"""

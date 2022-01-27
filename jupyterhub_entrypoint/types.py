@@ -64,7 +64,6 @@ class EntrypointType:
                 "entrypoint_name"
             ]
         }
-        self.batchspawner = kwargs.get("batchspawner", True)
         self.executable = kwargs.get("executable", "jupyter-labhub")
 
     def extend_schema(self, properties):
@@ -268,7 +267,7 @@ class EntrypointType:
         except ValidationError:
             raise EntrypointValidationError
 
-    def spawner_args(self, entrypoint_data):
+    def spawner_args(self, entrypoint_data, **kwargs):
         """Convert entrypoint data into spawner arguments.
 
         This method returns entrypoint data verbatim by default, but can be
@@ -277,6 +276,7 @@ class EntrypointType:
 
         Args:
             entrypoint_data (dict): Entrypoint data
+            kwargs (dict): Query filters
 
         Returns:
             dict: Arguments like `cmd` used during Hub `start()`
@@ -405,20 +405,23 @@ class TrustedScriptEntrypointType(EntrypointType):
         super().__init__(**kwargs)
         self.extend_schema([{"script": {"type": "string", "enum": list(args)}}])
 
-    def spawner_args(self, entrypoint_data):
+    def spawner_args(self, entrypoint_data, **kwargs):
         """Convert entrypoint data into spawner arguments.
 
         Args:
             entrypoint_data (dict): Entrypoint data
+            kwargs (dict): Query filters
 
         Returns:
             dict: Arguments prefixed with the trusted entrypoint script
 
         """
 
+        batchspawner = kwargs.get("batchspawner", False)
+
         doc = dict()
         script = entrypoint_data["script"]
-        if self.batchspawner:
+        if batchspawner:
             doc["cmd"] = [self.executable]
             doc["batchspawner_singleuser_cmd"] = [
                 script,
@@ -473,20 +476,23 @@ class TrustedPathEntrypointType(EntrypointType):
         super().__init__(**kwargs)
         self.extend_schema([{"path": {"type": "string", "enum": list(args)}}])
 
-    def spawner_args(self, entrypoint_data):
+    def spawner_args(self, entrypoint_data, **kwargs):
         """Convert entrypoint data into spawner arguments.
 
         Args:
             entrypoint_data (dict): Entrypoint data
+            kwargs (dict): Query filters
 
         Returns:
             dict: Arguments prefixed with the trusted path
 
         """
 
+        batchspawner = kwargs.get("batchspawner", False)
+
         path = Path(entrypoint_data["path"])
         doc = dict(cmd=[str(path / self.executable)])
-        if self.batchspawner:
+        if batchspawner:
             doc["batchspawner_singleuser_cmd"] = [
                 str(path / "batchspawner-singleuser")
             ]
@@ -545,20 +551,23 @@ class ShifterEntrypointType(EntrypointType):
         )
         self.extend_schema([{"image": {"type": "string"}}])
 
-    def spawner_args(self, entrypoint_data):
+    def spawner_args(self, entrypoint_data, **kwargs):
         """Convert entrypoint data into spawner arguments.
 
         Args:
             entrypoint_data (dict): Entrypoint data
+            kwargs (dict): Query filters
 
         Returns:
             dict: Arguments prefixed with Shifter command and image
 
         """
 
+        batchspawner = kwargs.get("batchspawner", False)
+
         doc = dict()
         image = entrypoint_data["image"]
-        if self.batchspawner:
+        if batchspawner:
             doc["cmd"] = [self.executable]
             doc["batchspawner_singleuser_cmd"] = [
                 "shifter",

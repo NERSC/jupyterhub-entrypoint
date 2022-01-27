@@ -3,6 +3,7 @@ import os
 
 from tornado.escape import json_decode
 from tornado.httpclient import AsyncHTTPClient
+from tornado.httputil import url_concat
 
 # For the demo, make it easy to get to the service
 
@@ -49,14 +50,25 @@ async def pre_spawn_hook(spawner):
     user = spawner.user.name
     client = AsyncHTTPClient()
     try:
-        response = await client.fetch(
+        args = {
+            "batchspawner": "no"
+        }
+        url = url_concat(
             f"http://127.0.0.1:8889/services/entrypoint/api/users/{user}/selections/hal",
-            headers={"Authorization": f"token {os.environ['ENTRYPOINT_API_TOKEN']}"}
+            args
         )
+        headers = {
+            "Authorization": f"token {os.environ['ENTRYPOINT_API_TOKEN']}"
+        }
+        response = await client.fetch(url, headers=headers)
     except Exception as e:
         spawner.log.error(f"{e}")
     else:
         data = json_decode(response.body)
-        spawner.cmd = data["cmd"]
+        spawner.log.info(f"{data}")
+        with spawner.hold_trait_notifications():
+            for key, value in data.items():
+                if spawner.has_trait(key):
+                    setattr(spawner, key, value)
 
 c.Spawner.pre_spawn_hook = pre_spawn_hook
