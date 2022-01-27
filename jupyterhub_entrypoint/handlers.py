@@ -402,10 +402,10 @@ class HubSelectionAPIHandler(BaseHandler):
         entrypoint_type_name, entrypoint_data = result
         entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
 
-        cmd = list()
+        spawner_args = dict()
         if isinstance(entrypoint_type, EntrypointType):
-            cmd = entrypoint_type.cmd(entrypoint_data)
-        self.write(dict(cmd=cmd))
+            spawner_args = entrypoint_type.spawner_args(entrypoint_data)
+        self.write(spawner_args)
 
     def validate_token(self):
         """TBD"""
