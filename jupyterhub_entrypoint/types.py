@@ -27,7 +27,7 @@ class EntrypointType:
 
     Subclass this and override the following methods:
 
-    - cmd               implementation required
+    - spawner_args      default is to return entrypoint data verbatim
     - get_type_name     optional, default is based on class name
     - get_display_name  optional, default is get_type_name()
     - get_description   optional, default is empty string
@@ -36,7 +36,7 @@ class EntrypointType:
 
     An `EntrypointType` has the following responsibilities:
 
-    - Converting entrypoint data into a replacement for the hub `Spawner.cmd`
+    - Converting entrypoint data into spawner arguments
     - Providing contents for a form used to manage a type of entrypoint
     - Validating input entrypoint data in an extensible way
 
@@ -54,7 +54,7 @@ class EntrypointType:
 
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.schema = {
             "type": "object",
             "properties": {
@@ -64,6 +64,7 @@ class EntrypointType:
                 "entrypoint_name"
             ]
         }
+        self.executable = kwargs.get("executable", "jupyter-labhub")
 
     def extend_schema(self, properties):
         """Extend the base schema used for validating user entrypoint data.
@@ -266,22 +267,23 @@ class EntrypointType:
         except ValidationError:
             raise EntrypointValidationError
 
-    def cmd(self, entrypoint_data):
-        """Return replacement `Spawner.cmd` suitable for hub use.
+    def spawner_args(self, entrypoint_data, **kwargs):
+        """Convert entrypoint data into spawner arguments.
 
-        Subclasses are required to provide an implementation of this method.
-        This value is used to rewrite `Spawner.cmd` typically by the hub's
-        `Spawner.pre_spawn_hook` configuration callback.
+        This method returns entrypoint data verbatim by default, but can be
+        used to convert entrypoint data into appropriate spawner arguments
+        for use by the Hub.
 
         Args:
             entrypoint_data (dict): Entrypoint data
+            kwargs (dict): Query filters
 
         Returns:
-            list: Arguments like `Spawner.cmd` used during hub `start()`
+            dict: Arguments like `cmd` used during Hub `start()`
 
         """
 
-        raise NotImplementedError
+        return entrypoint_data
 
     def get_type_name(self):
         """Render the entrypoint type for use as a dict key.
@@ -392,7 +394,7 @@ class TrustedScriptEntrypointType(EntrypointType):
 
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         """Initialize the trusted script entrypoint type.
 
         Args:
@@ -400,24 +402,34 @@ class TrustedScriptEntrypointType(EntrypointType):
 
         """
 
-        super().__init__()
+        super().__init__(**kwargs)
         self.extend_schema([{"script": {"type": "string", "enum": list(args)}}])
 
-    def cmd(self, entrypoint_data):
-        """Return replacement `Spawner.cmd` using the script entrypoint.
+    def spawner_args(self, entrypoint_data, **kwargs):
+        """Convert entrypoint data into spawner arguments.
 
         Args:
             entrypoint_data (dict): Entrypoint data
+            kwargs (dict): Query filters
 
         Returns:
-            list: Arguments prefixed to include trusted entrypoint script
+            dict: Arguments prefixed with the trusted entrypoint script
 
         """
 
-        return [
-            entrypoint_data["script"],
-            "jupyter-labhub"
-        ]
+        batchspawner = kwargs.get("batchspawner", False)
+
+        doc = dict()
+        script = entrypoint_data["script"]
+        if batchspawner:
+            doc["cmd"] = [self.executable]
+            doc["batchspawner_singleuser_cmd"] = [
+                script,
+                "batchspawner-singleuser"
+            ]
+        else:
+            doc["cmd"] = [script, self.executable]
+        return doc
 
     def get_type_name(self):
         """Override default type name behavior."""
@@ -453,7 +465,7 @@ class TrustedPathEntrypointType(EntrypointType):
 
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         """Initialize the trusted path entrypoint type.
 
         Args:
@@ -461,23 +473,30 @@ class TrustedPathEntrypointType(EntrypointType):
 
         """
 
-        super().__init__()
+        super().__init__(**kwargs)
         self.extend_schema([{"path": {"type": "string", "enum": list(args)}}])
 
-    def cmd(self, entrypoint_data):
-        """Return replacement `Spawner.cmd` using the script entrypoint.
+    def spawner_args(self, entrypoint_data, **kwargs):
+        """Convert entrypoint data into spawner arguments.
 
         Args:
             entrypoint_data (dict): Entrypoint data
+            kwargs (dict): Query filters
 
         Returns:
-            list: Absolute path to the Jupyter executable
+            dict: Arguments prefixed with the trusted path
 
         """
 
-        return [
-            os.path.join(entrypoint_data["path"], "jupyter-labhub")
-        ]
+        batchspawner = kwargs.get("batchspawner", False)
+
+        path = Path(entrypoint_data["path"])
+        doc = dict(cmd=[str(path / self.executable)])
+        if batchspawner:
+            doc["batchspawner_singleuser_cmd"] = [
+                str(path / "batchspawner-singleuser")
+            ]
+        return doc
 
     def get_type_name(self):
         """Override default type name behavior."""
@@ -511,7 +530,12 @@ class ShifterEntrypointType(EntrypointType):
 
     """
 
-    def __init__(self, shifter_api_url, shifter_api_token=None):
+    def __init__(
+        self,
+        shifter_api_url,
+        shifter_api_token=None,
+        **kwargs
+    ):
         """Initialize the Shifter entrypoint type.
 
         Args:
@@ -520,29 +544,39 @@ class ShifterEntrypointType(EntrypointType):
 
         """
 
-        super().__init__()
+        super().__init__(**kwargs)
         self.shifter_api_url = shifter_api_url
         self.shifter_api_token = (
             shifter_api_token or os.environ["SHIFTER_API_TOKEN"]
         )
         self.extend_schema([{"image": {"type": "string"}}])
 
-    def cmd(self, entrypoint_data):
-        """Return replacement `Spawner.cmd` using a Shifter entrypoint.
+    def spawner_args(self, entrypoint_data, **kwargs):
+        """Convert entrypoint data into spawner arguments.
 
         Args:
             entrypoint_data (dict): Entrypoint data
+            kwargs (dict): Query filters
 
         Returns:
-            list: Arguments prefixed to include Shifter image
+            dict: Arguments prefixed with Shifter command and image
 
         """
 
-        return [
-            "shifter",
-            f"--image={entrypoint_data['image']}",
-            "jupyter-labhub"
-        ]
+        batchspawner = kwargs.get("batchspawner", False)
+
+        doc = dict()
+        image = entrypoint_data["image"]
+        if batchspawner:
+            doc["cmd"] = [self.executable]
+            doc["batchspawner_singleuser_cmd"] = [
+                "shifter",
+                f"--image={image}",
+                "batchspawner-singleuser"
+            ]
+        else:
+            doc["cmd"] = ["shifter", f"--image={image}", self.executable]
+        return doc
 
     def get_description(self):
         """Override default description behavior."""
