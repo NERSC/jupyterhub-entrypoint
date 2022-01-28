@@ -424,10 +424,9 @@ class TrustedScriptEntrypointType(EntrypointType):
         script = entrypoint_data["script"]
         if batchspawner:
             doc["cmd"] = [self.executable]
-            doc["batchspawner_singleuser_cmd"] = [
-                script,
-                "batchspawner-singleuser"
-            ]
+            doc["batchspawner_singleuser_cmd"] = (
+                f"{script} batchspawner-singleuser"
+            )
         else:
             doc["cmd"] = [script, self.executable]
         return doc
@@ -494,9 +493,9 @@ class TrustedPathEntrypointType(EntrypointType):
         path = Path(entrypoint_data["path"])
         doc = dict(cmd=[str(path / self.executable)])
         if batchspawner:
-            doc["batchspawner_singleuser_cmd"] = [
-                str(path / "batchspawner-singleuser")
-            ]
+            doc["batchspawner_singleuser_cmd"] = str(
+                path / "batchspawner-singleuser"
+            )
         return doc
 
     def get_type_name(self):
@@ -570,11 +569,9 @@ class ShifterEntrypointType(EntrypointType):
         image = entrypoint_data["image"]
         if batchspawner:
             doc["cmd"] = [self.executable]
-            doc["batchspawner_singleuser_cmd"] = [
-                "shifter",
-                f"--image={image}",
-                "batchspawner-singleuser"
-            ]
+            doc["batchspawner_singleuser_cmd"] = (
+                f"shifter --image={image} batchspawner-singleuser"
+            )
         else:
             doc["cmd"] = ["shifter", f"--image={image}", self.executable]
         return doc
