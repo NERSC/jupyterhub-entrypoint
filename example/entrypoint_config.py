@@ -31,6 +31,21 @@
 #------------------------------------------------------------------------------
 ## This is an application.
 
+## Customizable explanation of the service.
+# c.EntrypointService.about_text = """\
+# <div class="row">
+#   <div class="col-md-offset-2 col-md-8">
+#     <hr>
+#     <h4>The JupyterHub Entrypoint Service</h4>
+#     <p>
+#       This service gives you a way to tell JupyterHub about what
+#       Jupyter environments you prefer to use most and also whether any
+#       one of those environments should be considered a default or
+#       favorite one in certain contexts.
+#     </p>
+#   </div>
+# </div>"""
+
 ## Config file to load
 #  Default: 'entrypoint_config.py'
 # c.EntrypointService.config_file = 'entrypoint_config.py'

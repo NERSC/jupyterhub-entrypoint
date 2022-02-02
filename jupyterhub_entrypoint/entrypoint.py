@@ -5,6 +5,7 @@ from collections import OrderedDict
 import logging
 import os
 import sys
+from textwrap import dedent
 
 from jupyterhub.log import CoroutineLogFormatter
 from jupyterhub._data import DATA_FILES_PATH
@@ -145,6 +146,22 @@ class EntrypointService(config.Application):
         help="Turns on SQLAlchemy echo for verbose output"
     ).tag(config=True)
 
+    about_text = Unicode(dedent("""\
+        <div class="row">
+          <div class="col-md-offset-2 col-md-8">
+            <hr>
+            <h4>The JupyterHub Entrypoint Service</h4>
+            <p>
+              This service gives you a way to tell JupyterHub about what
+              Jupyter environments you prefer to use most and also whether any
+              one of those environments should be considered a default or
+              favorite one in certain contexts.
+            </p>
+          </div>
+        </div>"""),
+        help="Customizable explanation of the service."
+    ).tag(config=True)
+
     def initialize(self, argv=None):
         super().initialize(argv)
 
@@ -218,6 +235,7 @@ class EntrypointService(config.Application):
         # Configure handlers and launch Tornado app
 
         self.settings = {
+            "about_text": self.about_text,
             "cookie_secret": cookie_secret,
             "service_prefix": self.service_prefix,
             "entrypoint_api_token": self.entrypoint_api_token,

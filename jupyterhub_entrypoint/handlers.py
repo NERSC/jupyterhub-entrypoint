@@ -54,6 +54,7 @@ class AboutHandler(WebHandler):
 
         super().initialize()
         self.template_about = self.env.get_template("about.html")
+        self.about_text = self.settings["about_text"]
 
     @authenticated
     async def get(self):
@@ -64,6 +65,7 @@ class AboutHandler(WebHandler):
         base_url = hub_auth.hub_prefix
 
         chunk = await self.template_about.render_async(
+            about_text=self.about_text,
             base_url=base_url,
             login_url=hub_auth.login_url,
             logout_url=url_path_join(base_url, "logout"),
