@@ -634,7 +634,7 @@ class ShifterEntrypointType(EntrypointType):
 
         client = AsyncHTTPClient()
         response = await client.fetch(
-            f"{self.shifter_api_url}/list/{self.username}",
+            f"{self.shifter_api_url}list/{self.username}",
             headers={"Authorization": self.shifter_api_token}
         )
         result = json_decode(response.body)
