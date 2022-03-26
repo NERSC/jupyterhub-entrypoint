@@ -138,14 +138,16 @@ class NewHandler(WebHandler):
 
     @authenticated
     async def get(self, entrypoint_type_name):
+        user = self.get_current_user()
+
+        try:
+            cls, args = self.entrypoint_types[entrypoint_type_name]
+            entrypoint_type = cls(*args, username=user["name"])
+        except KeyError:
+            raise WebError(404)
 
         context_name = self.get_query_argument("context")
 
-        entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
-        if entrypoint_type is None:
-            raise WebError(404)
-
-        user = self.get_current_user()
         hub_auth = self.hub_auth
         base_url = hub_auth.hub_prefix
         chunk = await self.template_manage.render_async(
@@ -192,8 +194,10 @@ class UpdateHandler(WebHandler):
         entrypoint_data = result["entrypoint_data"]
         context_names = result["context_names"]
 
-        entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
-        if entrypoint_type is None:
+        try:
+            cls, args = self.entrypoint_types[entrypoint_type_name]
+            entrypoint_type = cls(*args, username=username)
+        except KeyError:
             raise WebError(404)
 
         chunk = await self.template_manage.render_async(
@@ -329,11 +333,15 @@ class EntrypointAPIHandler(EntrypointHandler):
 
         """
 
-        entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
-        if isinstance(entrypoint_type, EntrypointType):
-            await entrypoint_type.validate(entrypoint_data)
-            return
-        raise EntrypointValidationError
+        FIXME: Actually check user
+
+        try:
+            cls, args = self.entrypoint_types[entrypoint_type_name]
+            entrypoint_type = cls(*args, username=user)
+        except:
+            raise EntrypointValidationError
+
+        await entrypoint_type.validate(entrypoint_data)
 
     def validate_context_names(self, context_names):
         for name in context_names:
@@ -428,7 +436,12 @@ class HubSelectionAPIHandler(HubAPIHandler):
         except ValueError:
             raise HTTPError(404)
         entrypoint_type_name, entrypoint_data = result
-        entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
+
+        try:
+            cls, args = self.entrypoint_types[entrypoint_type_name]
+            entrypoint_type = cls(*args, user=username)
+        except KeyError:
+            raise WebError(404)
 
         spawner_args = dict()
         if isinstance(entrypoint_type, EntrypointType):
@@ -464,17 +477,19 @@ class HubEntrypointAPIHandler(HubAPIHandler):
 
         result = list()
         for entrypoint_type_name, entrypoint_list in entrypoints.items():
-            entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
+            try:
+                cls, args = self.entrypoint_types[entrypoint_type_name]
+                entrypoint_type = cls(*args, username=user)
+            except KeyError:
+                raise WebError(404)
             for entrypoint in entrypoint_list:
                 entrypoint_data = entrypoint["entrypoint_data"]
                 entrypoint_name = entrypoint_data["entrypoint_name"]
-                spawner_args = dict()
-                if isinstance(entrypoint_type, EntrypointType):
-                    kwargs = self.parse_query_arguments()
-                    spawner_args = entrypoint_type.spawner_args(
-                        entrypoint_data,
-                        **kwargs
-                    )
+                kwargs = self.parse_query_arguments()
+                spawner_args = entrypoint_type.spawner_args(
+                    entrypoint_data,
+                    **kwargs
+                )
                 result.append({
                     "entrypoint_name": entrypoint_name,
                     "entrypoint_type": entrypoint_type_name,
