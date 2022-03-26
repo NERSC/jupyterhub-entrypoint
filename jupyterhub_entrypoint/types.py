@@ -29,7 +29,7 @@ class EntrypointType:
     Subclass this and override the following methods:
 
     - spawner_args      default is to return entrypoint data verbatim
-    - get_type_name     optional, default is based on class name
+    - get_type_name     optional classmethod, default is based on class name
     - get_display_name  optional, default is get_type_name()
     - get_description   optional, default is empty string
     - get_options       optional, coroutine
@@ -286,7 +286,8 @@ class EntrypointType:
 
         return entrypoint_data
 
-    def get_type_name(self):
+    @classmethod
+    def get_type_name(cls):
         """Render the entrypoint type for use as a dict key.
 
         By default, an entrypoint type's class name is converted to a type name
@@ -303,7 +304,7 @@ class EntrypointType:
 
         """
 
-        return re.sub("EntrypointType$", "", self.__class__.__name__).lower()
+        return re.sub("EntrypointType$", "", cls.__name__).lower()
 
     def get_display_name(self):
         """Render the entrypoint type in a human-friendly string.
@@ -431,7 +432,8 @@ class TrustedScriptEntrypointType(EntrypointType):
             doc["cmd"] = [script, self.executable]
         return doc
 
-    def get_type_name(self):
+    @classmethod
+    def get_type_name(cls):
         """Override default type name behavior."""
         return "trusted_script"
 
@@ -498,7 +500,8 @@ class TrustedPathEntrypointType(EntrypointType):
             )
         return doc
 
-    def get_type_name(self):
+    @classmethod
+    def get_type_name(cls):
         """Override default type name behavior."""
         return "trusted_path"
 
