@@ -30,8 +30,8 @@ class EntrypointType:
 
     - spawner_args      default is to return entrypoint data verbatim
     - get_type_name     optional classmethod, default is based on class name
-    - get_display_name  optional, default is get_type_name()
-    - get_description   optional, default is empty string
+    - get_display_name  optional classmethod, default is get_type_name()
+    - get_description   optional classmethod, default is empty string
     - get_options       optional, coroutine
     - validation_hook   optional, coroutine
 
@@ -66,6 +66,7 @@ class EntrypointType:
             ]
         }
         self.executable = kwargs.get("executable", "jupyter-labhub")
+        self.username = kwargs.get("username")
 
     def extend_schema(self, properties):
         """Extend the base schema used for validating user entrypoint data.
@@ -306,7 +307,8 @@ class EntrypointType:
 
         return re.sub("EntrypointType$", "", cls.__name__).lower()
 
-    def get_display_name(self):
+    @classmethod
+    def get_display_name(cls):
         """Render the entrypoint type in a human-friendly string.
 
         By default this just uses `get_type_name()` assuming that the type name
@@ -322,9 +324,10 @@ class EntrypointType:
 
         """
 
-        return self.get_type_name()
+        return cls.get_type_name()
 
-    def get_description(self):
+    @classmethod
+    def get_description(cls):
         """Render a description of the entrypoint type.
 
         By default this just returns the empty string, but can be used to
@@ -437,11 +440,13 @@ class TrustedScriptEntrypointType(EntrypointType):
         """Override default type name behavior."""
         return "trusted_script"
 
-    def get_display_name(self):
+    @classmethod
+    def get_display_name(cls):
         """Override default display name behavior."""
         return "trusted script"
 
-    def get_description(self):
+    @classmethod
+    def get_description(cls):
         """Override default description behavior."""
 
         return dedent("""
@@ -505,11 +510,13 @@ class TrustedPathEntrypointType(EntrypointType):
         """Override default type name behavior."""
         return "trusted_path"
 
-    def get_display_name(self):
+    @classmethod
+    def get_display_name(cls):
         """Override default display name behavior."""
         return "trusted path"
 
-    def get_description(self):
+    @classmethod
+    def get_description(cls):
         """Override default description behavior."""
 
         return dedent("""
@@ -537,6 +544,7 @@ class ShifterEntrypointType(EntrypointType):
         self,
         shifter_api_url,
         shifter_api_token=None,
+        image_filter=None,
         **kwargs
     ):
         """Initialize the Shifter entrypoint type.
@@ -544,6 +552,7 @@ class ShifterEntrypointType(EntrypointType):
         Args:
             shifter_api_url (str): URL for Shifter image service
             shifter_api_token (str): API token for Shifter image service
+            image_filter (function): Image filter, default is no filtering
 
         """
 
@@ -553,6 +562,7 @@ class ShifterEntrypointType(EntrypointType):
             shifter_api_token or os.environ["SHIFTER_API_TOKEN"]
         )
         self.extend_schema([{"image": {"type": "string"}}])
+        self.image_filter = image_filter or (lambda image: True)
 
     def spawner_args(self, entrypoint_data, **kwargs):
         """Convert entrypoint data into spawner arguments.
@@ -579,7 +589,8 @@ class ShifterEntrypointType(EntrypointType):
             doc["cmd"] = ["shifter", f"--image={image}", self.executable]
         return doc
 
-    def get_description(self):
+    @classmethod
+    def get_description(cls):
         """Override default description behavior."""
 
         return dedent("""
@@ -623,8 +634,9 @@ class ShifterEntrypointType(EntrypointType):
 
         client = AsyncHTTPClient()
         response = await client.fetch(
-            self.shifter_api_url,
+            f"{self.shifter_api_url}/list/{self.username}",
             headers={"Authorization": self.shifter_api_token}
         )
         result = json_decode(response.body)
-        return result["images"]
+        images = result["images"]
+        return [image for image in images if self.image_filter(image)]
