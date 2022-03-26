@@ -39,7 +39,7 @@ jobs:
         with:
           context: .
           builder: ${{ steps.buildx.outputs.name }}
-          file: example/Dockerfile
+          file: examples/change-default/Dockerfile
           push: false
           load: true
           tags: ${{ steps.prep.outputs.tagged_image }}
@@ -51,7 +51,7 @@ jobs:
         with:
           context: .
           builder: ${{ steps.buildx.outputs.name }}
-          file: example/Dockerfile.test
+          file: examples/change-default/Dockerfile.test
           push: false
           load: true
           tags: ${{ steps.prep.outputs.tagged_test_image }}

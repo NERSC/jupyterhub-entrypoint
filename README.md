@@ -174,9 +174,9 @@ Endpoint used to re-validate the given's user's selected entrypoint for a given 
 
 ## Example
 
-The `example` directory contains a Docker-based example. To build and run:
+The `examples` directory contain a Docker-based examples. To build and run, e.g., 
 
-    docker build -t jupyterhub-entrypoint:example -f example/Dockerfile .
+    docker build -t jupyterhub-entrypoint:example -f examples/change-default/Dockerfile .
     docker run -it --rm -p 8000:8000 jupyterhub-entrypoint:example 
 
 Then point your web browser at http://localhost:8000/, log in as user1:user1, select services -> entrypoint and see how it behaves
