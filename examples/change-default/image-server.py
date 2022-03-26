@@ -6,16 +6,16 @@ class ExampleImageHandler(RequestHandler):
 
     async def get(self, username):
         self.write({"images" : [
-            "ubuntu:latest",
-            "centos:latest",
-            "nginx:latest",
-            "redis:latest",
-            "node:latest",
-            "postgres:latest",
-            "mysql:latest",
-            "mongo:latest",
-            "debian:latest",
-            "jenkins:latest"
+            {"tag": ["ubuntu:latest"]},
+            {"tag": ["centos:latest"]},
+            {"tag": ["nginx:latest"]},
+            {"tag": ["redis:latest"]},
+            {"tag": ["node:latest"]},
+            {"tag": ["postgres:latest"]},
+            {"tag": ["mysql:latest"]},
+            {"tag": ["mongo:latest"]},
+            {"tag": ["debian:latest"]},
+            {"tag": ["jenkins:latest"]},
         ]})
 
 def main():
