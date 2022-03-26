@@ -17,7 +17,7 @@ ADD . src/jupyterhub-entrypoint
 RUN \
     cd src/jupyterhub-entrypoint                                    &&  \
     pip install --no-cache .                                        &&  \
-    cd example                                                      &&  \
+    cd examples/change-default                                      &&  \
     cp example-entrypoint.sh /usr/local/bin/example-entrypoint.sh   &&  \
     chmod a+x /usr/local/bin/example-entrypoint.sh                  &&  \
     cp                                                                  \
@@ -26,8 +26,8 @@ RUN \
         image-server.py                                                 \
         jupyterhub-entrypoint-cookie-secret                             \
         jupyterhub_config.py                                            \
-        ../../..                                                    &&  \
-    cd ../../..                                                     &&  \
+        ../../../..                                                 &&  \
+    cd ../../../..                                                  &&  \
     chmod u+x docker-entrypoint.sh
 
 ENTRYPOINT ["./docker-entrypoint.sh"]

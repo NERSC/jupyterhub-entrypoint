@@ -39,22 +39,23 @@ c.JupyterHub.load_roles = [{
 c.Spawner.cmd = ['jupyter-labhub']
 
 # Define pre-spawn hook to rewrite Spawner.cmd before start()
-# May need to look a bit different if options_form is defined!
 #
 # If there are multiple tags defined in the entrypoint service, the pre-spawn
 # hook needs to know how to figure out which one should be requested. One way
 # to do this would be to leverage named servers and read the "name" spawner
-# attribute.
+# attribute. Here it is just hard coded.
 
 async def pre_spawn_hook(spawner):
-    user = spawner.user.name
+    user = spawner.user
+    username = user.name
+
     client = AsyncHTTPClient()
     try:
         args = {
             "batchspawner": "no"
         }
         url = url_concat(
-            f"http://127.0.0.1:8889/services/entrypoint/api/users/{user}/selections/hal",
+            f"http://127.0.0.1:8889/services/entrypoint/api/users/{username}/selections/hal",
             args
         )
         headers = {
