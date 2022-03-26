@@ -439,7 +439,7 @@ class HubSelectionAPIHandler(HubAPIHandler):
 
         try:
             cls, args = self.entrypoint_types[entrypoint_type_name]
-            entrypoint_type = cls(*args, user=username)
+            entrypoint_type = cls(*args, user=user)
         except KeyError:
             raise WebError(404)
 
