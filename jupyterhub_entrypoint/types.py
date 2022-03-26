@@ -639,4 +639,6 @@ class ShifterEntrypointType(EntrypointType):
         )
         result = json_decode(response.body)
         images = result["images"]
-        return [image for image in images if self.image_filter(image)]
+        return [
+            image["tag"][0] for image in images if self.image_filter(image)
+        ]
