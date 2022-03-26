@@ -22,7 +22,8 @@ from traitlets import (
 from jupyterhub_entrypoint.ssl_context import SSLContext
 from jupyterhub_entrypoint.handlers import (
     AboutHandler, NewHandler, ViewHandler, UpdateHandler,
-    EntrypointAPIHandler, SelectionAPIHandler, HubSelectionAPIHandler
+    EntrypointAPIHandler, SelectionAPIHandler, HubSelectionAPIHandler,
+    HubEntrypointAPIHandler
 )
 from jupyterhub_entrypoint.types import EntrypointType
 from jupyterhub_entrypoint import dbi
@@ -284,6 +285,9 @@ class EntrypointService(config.Application):
             ), (
                 self.service_prefix + "api/users/(.+)/selections/(.+)",
                 HubSelectionAPIHandler
+            ), (
+                self.service_prefix + "api/users/(.+)/entrypoints/(.+)",
+                HubEntrypointAPIHandler
             ), (
                 self.service_prefix + r"static/(.*)",
                 StaticFileHandler,

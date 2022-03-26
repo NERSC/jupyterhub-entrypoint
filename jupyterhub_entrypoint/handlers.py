@@ -376,14 +376,40 @@ class SelectionAPIHandler(EntrypointHandler):
         self.write({})
 
 
-class HubSelectionAPIHandler(BaseHandler):
-    """Gives the hub and endpoint to contact to find out a user's selection."""
+class HubAPIHandler(BaseHandler):
 
     def initialize(self):
         """TBD"""
 
         super().initialize()
         self.entrypoint_api_token = os.environ["ENTRYPOINT_API_TOKEN"]
+
+    def validate_token(self):
+        """TBD"""
+
+        return (
+            self.request.headers["Authorization"] ==
+            f"token {self.entrypoint_api_token}"
+        )
+
+    def parse_query_arguments(self):
+        """TBD"""
+
+        kwargs = dict()
+
+        batchspawner = self.get_query_argument("batchspawner", "false").lower()
+        kwargs["batchspawner"] = batchspawner in ["true", "yes", "1"]
+
+        return kwargs
+
+
+class HubSelectionAPIHandler(HubAPIHandler):
+    """Gives the hub and endpoint to contact to find out a user's selection."""
+
+    def initialize(self):
+        """TBD"""
+
+        super().initialize()
         self.entrypoint_types = self.settings["entrypoint_types"]
 
     async def get(self, user, context_name):
@@ -413,20 +439,92 @@ class HubSelectionAPIHandler(BaseHandler):
             )
         self.write(spawner_args)
 
-    def parse_query_arguments(self):
+
+class HubEntrypointAPIHandler(HubAPIHandler):
+    """TBD"""
+
+    def initialize(self):
         """TBD"""
 
-        kwargs = dict()
+        super().initialize()
+        self.entrypoint_types = self.settings["entrypoint_types"]
 
-        batchspawner = self.get_query_argument("batchspawner", "false").lower()
-        kwargs["batchspawner"] = batchspawner in ["true", "yes", "1"]
-
-        return kwargs
-
-    def validate_token(self):
+    async def get(self, user, context_name):
         """TBD"""
 
-        return (
-            self.request.headers["Authorization"] ==
-            f"token {self.entrypoint_api_token}"
-        )
+        if not self.validate_token():
+            raise HTTPError(403)
+
+        async with self.engine.begin() as conn:
+            entrypoints = await dbi.retrieve_many_entrypoints(
+                conn, user, None, context_name
+            )
+
+        entrypoints = entrypoints.get(context_name, {})
+
+        result = list()
+        for entrypoint_type_name, entrypoint_list in entrypoints.items():
+            entrypoint_type = self.entrypoint_types.get(entrypoint_type_name)
+            for entrypoint in entrypoint_list:
+                entrypoint_data = entrypoint["entrypoint_data"]
+                entrypoint_name = entrypoint_data["entrypoint_name"]
+                spawner_args = dict()
+                if isinstance(entrypoint_type, EntrypointType):
+                    kwargs = self.parse_query_arguments()
+                    spawner_args = entrypoint_type.spawner_args(
+                        entrypoint_data,
+                        **kwargs
+                    )
+                result.append({
+                    "entrypoint_name": entrypoint_name,
+                    "entrypoint_type": entrypoint_type_name,
+                    "selected": entrypoint["selected"] is True,
+                    "spawner_args": spawner_args
+                })
+        self.write(dict(entrypoints=result))
+
+"""
+{
+    'shifter': [{
+        'uuid': 'bf170fbc-940c-472e-a831-b7329ace4822',
+        'entrypoint_data': {
+            'entrypoint_name': 'wewet',
+            'image': 'ubuntu:latest'
+        },
+        'selected': None
+    }],
+    'trusted_script': [{
+        'uuid': 'b8350e5f-89aa-4914-9046-6128186ed39a',
+        'entrypoint_data': {
+            'entrypoint_name': 'sdtwerq',
+            'script': '/usr/local/bin/example-entrypoint.sh'
+        },
+        'selected': None
+    }]
+}
+"""
+
+#       selection = None
+#       for entrypoint_type_name in self.entrypoint_types:
+#           for entrypoint in entrypoints.get(entrypoint_type_name, []):
+#               if entrypoint["selected"]:
+#                   selection = entrypoint
+#                   break
+
+#       hub_auth = self.hub_auth
+#       base_url = hub_auth.hub_prefix
+#       chunk = await self.template_index.render_async(
+#           base_url=base_url,
+#           entrypoint_types=self.entrypoint_types,
+#           entrypoints=entrypoints,
+#           login_url=hub_auth.login_url,
+#           logout_url=url_path_join(base_url, "logout"),
+#           no_spawner_check=True,
+#           selection=selection,
+#           service_prefix=self.settings["service_prefix"],
+#           static_url=self.static_url,
+#           context_name=context_name,
+#           contexts=self.settings["contexts"],
+#           user=user,
+#       )
+#       self.write(chunk)
