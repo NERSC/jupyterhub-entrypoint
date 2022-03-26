@@ -221,11 +221,10 @@ class EntrypointService(config.Application):
         coroutine = init_db(engine)
         loop.run_until_complete(coroutine)
 
-        # Create registry of entrypoint types
+        # Create registry of entrypoint type classes
 
         for cls, args in self.types:
-            entrypoint_type = cls(*args)
-            self.entrypoint_types[entrypoint_type.type_name] = entrypoint_type
+            self.entrypoint_types[cls.get_type_name()] = (cls, args)
 
         # Cookie secret
 
