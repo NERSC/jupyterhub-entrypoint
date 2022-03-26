@@ -333,7 +333,7 @@ class EntrypointAPIHandler(EntrypointHandler):
 
         """
 
-        FIXME: Actually check user
+        # FIXME: Actually check user
 
         try:
             cls, args = self.entrypoint_types[entrypoint_type_name]
