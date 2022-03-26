@@ -4,7 +4,7 @@ from tornado.web import Application, RequestHandler
 
 class ExampleImageHandler(RequestHandler):
 
-    async def get(self):
+    async def get(self, username):
         self.write({"images" : [
             "ubuntu:latest",
             "centos:latest",
@@ -20,10 +20,10 @@ class ExampleImageHandler(RequestHandler):
 
 def main():
     app = Application([
-        ("/services/images/", ExampleImageHandler)
+        ("/services/images/list/(.+)", ExampleImageHandler)
     ])
     app.listen(8890, address="127.0.0.1")
-    IOLoop.current().start() 
+    IOLoop.current().start()
 
 if __name__ == "__main__":
     main()
