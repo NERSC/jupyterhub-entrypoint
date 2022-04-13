@@ -90,10 +90,10 @@
   </div>
 
   <!-- Group entrypoints by type -->
-  {% for entrypoint_type in entrypoint_types.values() %}
-  {% set type_name = entrypoint_type.type_name %}
-  {% set display_name = entrypoint_type.display_name %}
-  {% set description = entrypoint_type.description %}
+  {% for entrypoint_type, _ in entrypoint_types.values() %}
+  {% set type_name = entrypoint_type.get_type_name() %}
+  {% set display_name = entrypoint_type.get_display_name() %}
+  {% set description = entrypoint_type.get_description() %}
   <div class="row">
     <div class="col-xs-offset-2 col-xs-8">
       <hr>
